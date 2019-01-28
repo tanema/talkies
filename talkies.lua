@@ -41,12 +41,6 @@ local Talkies = {
 
 function Talkies.new(title, messages, config)
   config = config or {}
-  local titleColor = {255, 255, 255}
-  if type(title) == "table" then
-    titleColor = title[2]
-    title      = title[1]
-  end
-
   if type(messages) ~= "table" then
     messages = { messages }
   end
@@ -64,10 +58,11 @@ function Talkies.new(title, messages, config)
   -- Insert the Talkies.new into its own instance (table)
   allMessages[#allMessages+1] = {
     title      = title,
-    titleColor = titleColor,
     messages   = messages,
     x          = config.x,
     y          = config.y,
+    titleColor = config.titleColor,
+    boxColor   = config.boxColor,
     image      = config.image,
     options    = config.options,
     onstart    = config.onstart or function() end,
@@ -191,96 +186,92 @@ function Talkies.advanceMsg()
 end
 
 function Talkies.draw()
-  -- This section is mostly unfinished...
-  -- Lots of magic numbers and generally takes a lot of
-  -- trial and error to look right, beware.
+  if not Talkies.showingMessage then return end
+
+  love.graphics.push()
   love.graphics.setDefaultFilter("nearest", "nearest")
-  if Talkies.showingMessage then
-    local scale = 0.26
-    local padding = 10
+  local scale = 0.26
+  local padding = 10
 
-    local boxH = 118
-    local boxW = love.graphics.getWidth()-(2*padding)
-    local boxX = padding
-    local boxY = love.graphics.getHeight()-(boxH+padding)
+  local boxH = 118
+  local boxW = love.graphics.getWidth()-(2*padding)
+  local boxX = padding
+  local boxY = love.graphics.getHeight()-(boxH+padding)
 
-    local imgX = (boxX+padding)*(1/scale)
-    local imgY = (boxY+padding)*(1/scale)
-    local imgW = 0
-    local imgH = 0
-    if Talkies.currentImage ~= nil then
-      imgW = Talkies.currentImage:getWidth()
-      imgH = Talkies.currentImage:getHeight()
-    end
+  local imgX = (boxX+padding)*(1/scale)
+  local imgY = (boxY+padding)*(1/scale)
+  local imgW = 0
+  local imgH = 0
+  if Talkies.currentImage ~= nil then
+    imgW = Talkies.currentImage:getWidth()
+    imgH = Talkies.currentImage:getHeight()
+  end
 
-    local fontHeight = Talkies.font:getHeight(" ")
+  local fontHeight = Talkies.font:getHeight(" ")
 
-    local titleBoxW = Talkies.font:getWidth(Talkies.currentTitle)+(2*padding)
-    local titleBoxH = fontHeight+padding
-    local titleBoxX = boxX
-    local titleBoxY = boxY-titleBoxH-(padding/2)
+  local titleBoxW = Talkies.font:getWidth(Talkies.currentTitle)+(2*padding)
+  local titleBoxH = fontHeight+padding
+  local titleBoxX = boxX
+  local titleBoxY = boxY-titleBoxH-(padding/2)
 
-    local titleColor = allMessages[Talkies.currentMsgIndex].titleColor
-    local titleX = titleBoxX+padding
-    local titleY = titleBoxY+2
+  local titleColor = allMessages[Talkies.currentMsgIndex].titleColor or {255, 255, 255}
+  local titleX = titleBoxX+padding
+  local titleY = titleBoxY+2
 
-    local textX = (imgX+imgW)/(1/scale)+padding
-    local textY = boxY+1
+  local textX = (imgX+imgW)/(1/scale)+padding
+  local textY = boxY+1
 
-    local optionsY = textY+Talkies.font:getHeight(Talkies.printedText)-(padding/1.6)
-    local optionsSpace = fontHeight/1.5
+  local optionsY = textY+Talkies.font:getHeight(Talkies.printedText)-(padding/1.6)
+  local optionsSpace = fontHeight/1.5
 
-    local msgTextY = textY+Talkies.font:getHeight()/1.2
-    local msgLimit = boxW-(imgW/(1/scale))-(4*padding)
+  local msgTextY = textY+Talkies.font:getHeight()/1.2
+  local msgLimit = boxW-(imgW/(1/scale))-(4*padding)
 
-    local fontColour = { 255, 255, 255, 255 }
-    local boxColour = { 0, 0, 0, 222 }
+  local messageColour = allMessages[Talkies.currentMsgIndex].messageColor or {255, 255, 255}
+  local boxColor = allMessages[Talkies.currentMsgIndex].boxColor or { 0, 0, 0, 222 }
 
-    love.graphics.setFont(Talkies.font)
+  love.graphics.setFont(Talkies.font)
 
-    -- Message title
-    love.graphics.setColor(boxColour)
-    love.graphics.rectangle("fill", titleBoxX, titleBoxY, titleBoxW, titleBoxH)
-    love.graphics.setColor(titleColor)
-    love.graphics.print(Talkies.currentTitle, titleX, titleY)
+  -- Message title
+  love.graphics.setColor(boxColor)
+  love.graphics.rectangle("fill", titleBoxX, titleBoxY, titleBoxW, titleBoxH)
+  love.graphics.setColor(titleColor)
+  love.graphics.print(Talkies.currentTitle, titleX, titleY)
 
-    -- Main message box
-    love.graphics.setColor(boxColour)
-    love.graphics.rectangle("fill", boxX, boxY, boxW, boxH)
-    love.graphics.setColor(fontColour)
+  -- Main message box
+  love.graphics.setColor(boxColor)
+  love.graphics.rectangle("fill", boxX, boxY, boxW, boxH)
+  love.graphics.setColor(messageColour)
 
-    -- Message avatar
-    if Talkies.currentImage ~= nil then
-      love.graphics.push()
-        love.graphics.scale(scale, scale)
-        love.graphics.draw(Talkies.currentImage, imgX, imgY)
-      love.graphics.pop()
-    end
+  -- Message avatar
+  if Talkies.currentImage ~= nil then
+    love.graphics.push()
+      love.graphics.scale(scale, scale)
+      love.graphics.draw(Talkies.currentImage, imgX, imgY)
+    love.graphics.pop()
+  end
 
-    -- Message text
-    if Talkies.autoWrap then
-      love.graphics.print(Talkies.printedText, textX, textY)
-    else
-      love.graphics.printf(Talkies.printedText, textX, textY, msgLimit)
-    end
+  -- Message text
+  if Talkies.autoWrap then
+    love.graphics.print(Talkies.printedText, textX, textY)
+  else
+    love.graphics.printf(Talkies.printedText, textX, textY, msgLimit)
+  end
 
-    -- Message options (when shown)
-    if Talkies.showingOptions and typing == false then
-      for k, option in pairs(allMessages[Talkies.currentMsgIndex].options) do
-        -- First option has no Y padding...
-        love.graphics.print(option[1], textX+padding, optionsY+((k-1)*optionsSpace))
-      end
-    end
-
-    -- Next message/continue indicator
-    if Talkies.showIndicator then
-      love.graphics.print(Talkies.indicatorCharacter, boxX+boxW-(2.5*padding), boxY+boxH-(padding/2)-fontHeight)
+  -- Message options (when shown)
+  if Talkies.showingOptions and typing == false then
+    for k, option in pairs(allMessages[Talkies.currentMsgIndex].options) do
+      -- First option has no Y padding...
+      love.graphics.print(option[1], textX+padding, optionsY+((k-1)*optionsSpace))
     end
   end
 
-  -- Reset fonts, run debugger if allowed
-  love.graphics.setFont(defaultFont)
-  Talkies.drawDebug()
+  -- Next message/continue indicator
+  if Talkies.showIndicator then
+    love.graphics.print(Talkies.indicatorCharacter, boxX+boxW-(2.5*padding), boxY+boxH-(padding/2)-fontHeight)
+  end
+
+  love.graphics.pop()
 end
 
 function Talkies.keyreleased(key)
@@ -395,30 +386,6 @@ function Talkies.clearMessages()
   typing = false
   typePosition = 0
   allMessages = {}
-end
-
-function Talkies.drawDebug()
-  if Talkies.debug == true then
-    log = { -- It works...
-      "typing", typing,
-      "paused", Talkies.paused,
-      "showOptions", Talkies.showingOptions,
-      "indicatorTimer", indicatorTimer,
-      "showIndicator", Talkies.showIndicator,
-      "printedText", Talkies.printedText,
-      "textToPrint", Talkies.currentMessage,
-      "currentMsgIndex", Talkies.currentMsgIndex,
-      "currentMsgKey", Talkies.currentMsgKey,
-      "currentOption", Talkies.currentOption,
-      "currentHeader", utf8.sub(Talkies.currentMessage, utf8.len(Talkies.printedText)+1, utf8.len(Talkies.printedText)+2),
-      "typeSpeed", Talkies.typeSpeed,
-      "typeSound", type(Talkies.typeSound) .. " " .. tostring(Talkies.typeSound),
-      "allMessages.len", #allMessages,
-    }
-    for i=1, #log, 2 do
-      love.graphics.print(tostring(log[i]) .. ":  " .. tostring(log[i+1]), 10, 7*i)
-    end
-  end
 end
 
 -- External UTF8 functions
