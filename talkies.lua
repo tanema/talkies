@@ -19,9 +19,9 @@ local indicatorTimer = 0
 local defaultFont = love.graphics.newFont()
 local allMessages = {} -- Create the message instance container
 
-local Moan = {
-  _VERSION     = '0.2.8',
-  _URL         = 'https://github.com/twentytwoo/Moan.lua',
+local Talkies = {
+  _VERSION     = '0.0.1',
+  _URL         = 'https://github.com/tanema/talkies',
   _DESCRIPTION = 'A simple messagebox system for LÖVE',
 
   printedText        = "",        -- Section of the text printed so far
@@ -34,12 +34,12 @@ local Moan = {
   font               = defaultFont,
   currentMessage     = "",
   currentMsgIndex    = 1,
-  currentMsgKey      = 1,         -- Key of value in the Moan.new messages
-  currentOption      = 1,         -- Key of option function in Moan.new option array
+  currentMsgKey      = 1,         -- Key of value in the Talkies.new messages
+  currentOption      = 1,         -- Key of option function in Talkies.new option array
   currentImage       = nil,       -- Avatar image
 }
 
-function Moan.new(title, messages, config)
+function Talkies.new(title, messages, config)
   config = config or {}
   local titleColor = {255, 255, 255}
   if type(title) == "table" then
@@ -55,83 +55,83 @@ function Moan.new(title, messages, config)
 
   -- Insert \n before text is printed, stops half-words being printed
   -- and then wrapped onto new line
-  if Moan.autoWrap then
+  if Talkies.autoWrap then
     for i=1, #messages do
-      messages[i] = Moan.wordwrap(messages[i], 65)
+      messages[i] = Talkies.wordwrap(messages[i], 65)
     end
   end
 
-  -- Insert the Moan.new into its own instance (table)
+  -- Insert the Talkies.new into its own instance (table)
   allMessages[#allMessages+1] = {
     title      = title,
     titleColor = titleColor,
     messages   = messages,
     x          = config.x,
     y          = config.y,
-    image      = config.image ~= nil and config.image or love.graphics.newImage(PATH .. "noImg.png"),
+    image      = config.image,
     options    = config.options,
     onstart    = config.onstart or function() end,
     oncomplete = config.oncomplete or function() end
   }
 
-  Moan.showingMessage = true
+  Talkies.showingMessage = true
 
-  -- Only run .onstart()/setup if first message instance on first Moan.new
-  -- Prevents onstart=Moan.new(... recursion crashing the game.
-  if Moan.currentMsgIndex == 1 then
+  -- Only run .onstart()/setup if first message instance on first Talkies.new
+  -- Prevents onstart=Talkies.new(... recursion crashing the game.
+  if Talkies.currentMsgIndex == 1 then
     -- Set the first message up, after this is set up via advanceMsg()
     typePosition = 0
-    Moan.currentMessage = allMessages[Moan.currentMsgIndex].messages[Moan.currentMsgKey]
-    Moan.currentTitle = allMessages[Moan.currentMsgIndex].title
-    Moan.currentImage = allMessages[Moan.currentMsgIndex].image
-    Moan.showingOptions = false
+    Talkies.currentMessage = allMessages[Talkies.currentMsgIndex].messages[Talkies.currentMsgKey]
+    Talkies.currentTitle = allMessages[Talkies.currentMsgIndex].title
+    Talkies.currentImage = allMessages[Talkies.currentMsgIndex].image
+    Talkies.showingOptions = false
     -- Run the first startup function
-    allMessages[Moan.currentMsgIndex].onstart()
+    allMessages[Talkies.currentMsgIndex].onstart()
   end
 end
 
-function Moan.update(dt)
+function Talkies.update(dt)
   -- Check if the output string is equal to final string, else we must be still typing it
-  typing = (Moan.printedText ~= Moan.currentMessage)
+  typing = (Talkies.printedText ~= Talkies.currentMessage)
 
-  if not Moan.showingMessage then return end
+  if not Talkies.showingMessage then return end
 
   -- Tiny timer for the message indicator
-  if (Moan.paused or not typing) then
+  if (Talkies.paused or not typing) then
     indicatorTimer = indicatorTimer + 1
-    if indicatorTimer > Moan.indicatorDelay then
-      Moan.showIndicator = not Moan.showIndicator
+    if indicatorTimer > Talkies.indicatorDelay then
+      Talkies.showIndicator = not Talkies.showIndicator
       indicatorTimer = 0
     end
   else
-    Moan.showIndicator = false
+    Talkies.showIndicator = false
   end
 
   -- Check if we're the 2nd to last message, verify if an options table exists, on next advance show options
-  if allMessages[Moan.currentMsgIndex].messages[Moan.currentMsgKey+1] == "\n" and type(allMessages[Moan.currentMsgIndex].options) == "table" then
-    Moan.showingOptions = true
+  if allMessages[Talkies.currentMsgIndex].messages[Talkies.currentMsgKey+1] == "\n" and type(allMessages[Talkies.currentMsgIndex].options) == "table" then
+    Talkies.showingOptions = true
   end
 
   -- Constantly update the option prefix
-  if Moan.showingOptions then
+  if Talkies.showingOptions then
     -- Remove the indicators from other selections
-    for i=1, #allMessages[Moan.currentMsgIndex].options do
-      allMessages[Moan.currentMsgIndex].options[i][1] = string.gsub(allMessages[Moan.currentMsgIndex].options[i][1], Moan.optionCharacter.." " , "")
+    for i=1, #allMessages[Talkies.currentMsgIndex].options do
+      allMessages[Talkies.currentMsgIndex].options[i][1] = string.gsub(allMessages[Talkies.currentMsgIndex].options[i][1], Talkies.optionCharacter.." " , "")
     end
 
     -- Add an indicator to the current selection
-    if allMessages[Moan.currentMsgIndex].options[Moan.currentOption][1] ~= "" then
-      allMessages[Moan.currentMsgIndex].options[Moan.currentOption][1] = Moan.optionCharacter.." ".. allMessages[Moan.currentMsgIndex].options[Moan.currentOption][1]
+    if allMessages[Talkies.currentMsgIndex].options[Talkies.currentOption][1] ~= "" then
+      allMessages[Talkies.currentMsgIndex].options[Talkies.currentOption][1] = Talkies.optionCharacter.." ".. allMessages[Talkies.currentMsgIndex].options[Talkies.currentOption][1]
     end
   end
 
   -- Detect a 'pause' by checking the content of the last two characters in the printedText
-  Moan.paused = (string.sub(Moan.currentMessage, string.len(Moan.printedText)+1, string.len(Moan.printedText)+2) == "--")
+  Talkies.paused = (string.sub(Talkies.currentMessage, string.len(Talkies.printedText)+1, string.len(Talkies.printedText)+2) == "--")
 
   --https://www.reddit.com/r/love2d/comments/4185xi/quick_question_typing_effect/
-  if typePosition <= string.len(Moan.currentMessage) then
+  if typePosition <= string.len(Talkies.currentMessage) then
     -- Only decrease the timer when not paused
-    if not Moan.paused then
+    if not Talkies.paused then
       typeTimer = typeTimer - dt
     end
 
@@ -139,64 +139,63 @@ function Moan.update(dt)
     -- Adjust position, use string.sub to get sub-string
     if typeTimer <= 0 then
       -- Only make the keypress sound if the next character is a letter
-      if string.sub(Moan.currentMessage, typePosition, typePosition) ~= " " and typing then
-        Moan.playSound(Moan.typeSound)
+      if string.sub(Talkies.currentMessage, typePosition, typePosition) ~= " " and typing then
+        Talkies.playSound(Talkies.typeSound)
       end
       typeTimer = typeTimerMax
       typePosition = typePosition + 1
 
       -- UTF8 support, thanks @FluffySifilis
-      local byteoffset = utf8.offset(Moan.currentMessage, typePosition)
+      local byteoffset = utf8.offset(Talkies.currentMessage, typePosition)
       if byteoffset then
-        Moan.printedText = string.sub(Moan.currentMessage, 0, byteoffset - 1)
+        Talkies.printedText = string.sub(Talkies.currentMessage, 0, byteoffset - 1)
       end
     end
   end
 end
 
-function Moan.advanceMsg()
-  if not Moan.showingMessage then return end
+function Talkies.advanceMsg()
+  if not Talkies.showingMessage then return end
 
   -- Check if we're at the last message in the instances queue (+1 because "\n" indicated end of instance)
-  if allMessages[Moan.currentMsgIndex].messages[Moan.currentMsgKey+1] == "\n" then
+  if allMessages[Talkies.currentMsgIndex].messages[Talkies.currentMsgKey+1] == "\n" then
     -- Last message in instance, so run the final function.
-    allMessages[Moan.currentMsgIndex].oncomplete()
+    allMessages[Talkies.currentMsgIndex].oncomplete()
 
     -- Check if we're the last instance in allMessages
-    if allMessages[Moan.currentMsgIndex+1] == nil then
-      Moan.clearMessages()
+    if allMessages[Talkies.currentMsgIndex+1] == nil then
+      Talkies.clearMessages()
       return
     else
       -- We're not the last instance, so we can go to the next one
       -- Reset the msgKey such that we read the first msg of the new instance
-      Moan.currentMsgIndex = Moan.currentMsgIndex + 1
-      Moan.currentMsgKey = 1
-      Moan.currentOption = 1
+      Talkies.currentMsgIndex = Talkies.currentMsgIndex + 1
+      Talkies.currentMsgKey = 1
+      Talkies.currentOption = 1
       typePosition = 0
-      Moan.showingOptions = false
-      Moan.moveCamera()
+      Talkies.showingOptions = false
     end
   else
     -- We're not the last message and we can show the next one
     -- Reset type position to restart typing
-    Moan.currentMsgKey = Moan.currentMsgKey + 1
+    Talkies.currentMsgKey = Talkies.currentMsgKey + 1
     typePosition = 0
   end
 
-  if Moan.currentMsgKey == 1 then
-    allMessages[Moan.currentMsgIndex].onstart()
+  if Talkies.currentMsgKey == 1 then
+    allMessages[Talkies.currentMsgIndex].onstart()
   end
-  Moan.currentMessage = allMessages[Moan.currentMsgIndex].messages[Moan.currentMsgKey] or ""
-  Moan.currentTitle = allMessages[Moan.currentMsgIndex].title or ""
-  Moan.currentImage = allMessages[Moan.currentMsgIndex].image
+  Talkies.currentMessage = allMessages[Talkies.currentMsgIndex].messages[Talkies.currentMsgKey] or ""
+  Talkies.currentTitle = allMessages[Talkies.currentMsgIndex].title or ""
+  Talkies.currentImage = allMessages[Talkies.currentMsgIndex].image
 end
 
-function Moan.draw()
+function Talkies.draw()
   -- This section is mostly unfinished...
   -- Lots of magic numbers and generally takes a lot of
   -- trial and error to look right, beware.
   love.graphics.setDefaultFilter("nearest", "nearest")
-  if Moan.showingMessage then
+  if Talkies.showingMessage then
     local scale = 0.26
     local padding = 10
 
@@ -207,39 +206,43 @@ function Moan.draw()
 
     local imgX = (boxX+padding)*(1/scale)
     local imgY = (boxY+padding)*(1/scale)
-    local imgW = Moan.currentImage:getWidth()
-    local imgH = Moan.currentImage:getHeight()
+    local imgW = 0
+    local imgH = 0
+    if Talkies.currentImage ~= nil then
+      imgW = Talkies.currentImage:getWidth()
+      imgH = Talkies.currentImage:getHeight()
+    end
 
-    local fontHeight = Moan.font:getHeight(" ")
+    local fontHeight = Talkies.font:getHeight(" ")
 
-    local titleBoxW = Moan.font:getWidth(Moan.currentTitle)+(2*padding)
+    local titleBoxW = Talkies.font:getWidth(Talkies.currentTitle)+(2*padding)
     local titleBoxH = fontHeight+padding
     local titleBoxX = boxX
     local titleBoxY = boxY-titleBoxH-(padding/2)
 
-    local titleColor = allMessages[Moan.currentMsgIndex].titleColor
+    local titleColor = allMessages[Talkies.currentMsgIndex].titleColor
     local titleX = titleBoxX+padding
     local titleY = titleBoxY+2
 
     local textX = (imgX+imgW)/(1/scale)+padding
     local textY = boxY+1
 
-    local optionsY = textY+Moan.font:getHeight(Moan.printedText)-(padding/1.6)
+    local optionsY = textY+Talkies.font:getHeight(Talkies.printedText)-(padding/1.6)
     local optionsSpace = fontHeight/1.5
 
-    local msgTextY = textY+Moan.font:getHeight()/1.2
+    local msgTextY = textY+Talkies.font:getHeight()/1.2
     local msgLimit = boxW-(imgW/(1/scale))-(4*padding)
 
     local fontColour = { 255, 255, 255, 255 }
     local boxColour = { 0, 0, 0, 222 }
 
-    love.graphics.setFont(Moan.font)
+    love.graphics.setFont(Talkies.font)
 
     -- Message title
     love.graphics.setColor(boxColour)
     love.graphics.rectangle("fill", titleBoxX, titleBoxY, titleBoxW, titleBoxH)
     love.graphics.setColor(titleColor)
-    love.graphics.print(Moan.currentTitle, titleX, titleY)
+    love.graphics.print(Talkies.currentTitle, titleX, titleY)
 
     -- Main message box
     love.graphics.setColor(boxColour)
@@ -247,105 +250,106 @@ function Moan.draw()
     love.graphics.setColor(fontColour)
 
     -- Message avatar
-    love.graphics.push()
-      love.graphics.scale(scale, scale)
-      love.graphics.draw(Moan.currentImage, imgX, imgY)
-    love.graphics.pop()
+    if Talkies.currentImage ~= nil then
+      love.graphics.push()
+        love.graphics.scale(scale, scale)
+        love.graphics.draw(Talkies.currentImage, imgX, imgY)
+      love.graphics.pop()
+    end
 
     -- Message text
-    if Moan.autoWrap then
-      love.graphics.print(Moan.printedText, textX, textY)
+    if Talkies.autoWrap then
+      love.graphics.print(Talkies.printedText, textX, textY)
     else
-      love.graphics.printf(Moan.printedText, textX, textY, msgLimit)
+      love.graphics.printf(Talkies.printedText, textX, textY, msgLimit)
     end
 
     -- Message options (when shown)
-    if Moan.showingOptions and typing == false then
-      for k, option in pairs(allMessages[Moan.currentMsgIndex].options) do
+    if Talkies.showingOptions and typing == false then
+      for k, option in pairs(allMessages[Talkies.currentMsgIndex].options) do
         -- First option has no Y padding...
         love.graphics.print(option[1], textX+padding, optionsY+((k-1)*optionsSpace))
       end
     end
 
     -- Next message/continue indicator
-    if Moan.showIndicator then
-      love.graphics.print(Moan.indicatorCharacter, boxX+boxW-(2.5*padding), boxY+boxH-(padding/2)-fontHeight)
+    if Talkies.showIndicator then
+      love.graphics.print(Talkies.indicatorCharacter, boxX+boxW-(2.5*padding), boxY+boxH-(padding/2)-fontHeight)
     end
   end
 
   -- Reset fonts, run debugger if allowed
   love.graphics.setFont(defaultFont)
-  Moan.drawDebug()
+  Talkies.drawDebug()
 end
 
-function Moan.keyreleased(key)
-  if Moan.showingOptions then
-    if key == Moan.selectButton and not typing then
-      if Moan.currentMsgKey == #allMessages[Moan.currentMsgIndex].messages-1 then
+function Talkies.keyreleased(key)
+  if Talkies.showingOptions then
+    if key == Talkies.selectButton and not typing then
+      if Talkies.currentMsgKey == #allMessages[Talkies.currentMsgIndex].messages-1 then
         -- Execute the selected function
-        for i=1, #allMessages[Moan.currentMsgIndex].options do
-          if Moan.currentOption == i then
-            allMessages[Moan.currentMsgIndex].options[i][2]()
-            Moan.playSound(Moan.optionSwitchSound)
+        for i=1, #allMessages[Talkies.currentMsgIndex].options do
+          if Talkies.currentOption == i then
+            allMessages[Talkies.currentMsgIndex].options[i][2]()
+            Talkies.playSound(Talkies.optionSwitchSound)
           end
         end
       end
       -- Option selection
       elseif key == "down" or key == "s" then
-        Moan.currentOption = Moan.currentOption + 1
-        Moan.playSound(Moan.optionSwitchSound)
+        Talkies.currentOption = Talkies.currentOption + 1
+        Talkies.playSound(Talkies.optionSwitchSound)
       elseif key == "up" or key == "w" then
-        Moan.currentOption = Moan.currentOption - 1
-        Moan.playSound(Moan.optionSwitchSound)
+        Talkies.currentOption = Talkies.currentOption - 1
+        Talkies.playSound(Talkies.optionSwitchSound)
       end
       -- Return to top/bottom of options on overflow
-      if Moan.currentOption < 1 then
-        Moan.currentOption = #allMessages[Moan.currentMsgIndex].options
-      elseif Moan.currentOption > #allMessages[Moan.currentMsgIndex].options then
-        Moan.currentOption = 1
+      if Talkies.currentOption < 1 then
+        Talkies.currentOption = #allMessages[Talkies.currentMsgIndex].options
+      elseif Talkies.currentOption > #allMessages[Talkies.currentMsgIndex].options then
+        Talkies.currentOption = 1
     end
   end
   -- Check if we're still typing, if we are we can skip it
   -- If not, then go to next message/instance
-  if key == Moan.selectButton then
-    if Moan.paused then
+  if key == Talkies.selectButton then
+    if Talkies.paused then
       -- Get the text left and right of "--"
-      leftSide = string.sub(Moan.currentMessage, 1, string.len(Moan.printedText))
-      rightSide = string.sub(Moan.currentMessage, string.len(Moan.printedText)+3, string.len(Moan.currentMessage))
+      leftSide = string.sub(Talkies.currentMessage, 1, string.len(Talkies.printedText))
+      rightSide = string.sub(Talkies.currentMessage, string.len(Talkies.printedText)+3, string.len(Talkies.currentMessage))
       -- And then concatenate them, thanks @pfirsich
-      Moan.currentMessage = leftSide .. " " .. rightSide
+      Talkies.currentMessage = leftSide .. " " .. rightSide
       -- Put the typerwriter back a bit and start up again
       typePosition = typePosition - 1
       typeTimer = 0
     else
-      if typing == true then
-        -- Skip the typing completely
-        Moan.printedText = Moan.currentMessage
-        typePosition = string.len(Moan.currentMessage)
+      if typing == true then -- Skip the typing completely
+        Talkies.printedText = Talkies.currentMessage
+        typePosition = string.len(Talkies.currentMessage)
       else
-        Moan.advanceMsg()
+        Talkies.advanceMsg()
       end
     end
   end
 end
 
-function Moan.setSpeed(speed)
+function Talkies.setSpeed(speed)
   if speed == "fast" then
-    Moan.typeSpeed = 0.01
+    Talkies.typeSpeed = 0.01
   elseif speed == "medium" then
-    Moan.typeSpeed = 0.04
+    Talkies.typeSpeed = 0.04
   elseif speed == "slow" then
-    Moan.typeSpeed = 0.08
+    Talkies.typeSpeed = 0.08
   else
-    assert(tonumber(speed), "Moan.setSpeed() - Expected number, got " .. tostring(speed))
-    Moan.typeSpeed = speed
+    assert(tonumber(speed), "Talkies.setSpeed() - Expected number, got " .. tostring(speed))
+    Talkies.typeSpeed = speed
   end
   -- Update the timeout timer.
-  typeTimerMax = Moan.typeSpeed
+  typeTimerMax = Talkies.typeSpeed
 end
 
 -- ripped from https://github.com/rxi/lume
-function Moan.wordwrap(str, limit)
+function Talkies.wordwrap(str, limit)
   limit = limit or 72
   local check
   if type(limit) == "number" then
@@ -376,54 +380,39 @@ function Moan.wordwrap(str, limit)
   return table.concat(rtn)
 end
 
-function Moan.setCamera(camToUse)
-  Moan.currentCamera = camToUse
-end
-
-function Moan.moveCamera()
-  -- Only move the camera if one exists
-  if Moan.currentCamera ~= nil then
-    -- Move the camera to the new instances position
-    local msg = allMessages[Moan.currentMsgIndex]
-    if (msg.x and msg.y) ~= nil then
-      Moan.currentCamera:lookAt(msg.x, msg.y)
-    end
-  end
-end
-
-function Moan.playSound(sound)
+function Talkies.playSound(sound)
   if type(sound) == "userdata" then
     sound:play()
   end
 end
 
-function Moan.clearMessages()
-  Moan.showingMessage = false
-  Moan.showingOptions = false
-  Moan.currentMsgIndex = 1
-  Moan.currentMsgKey = 1
-  Moan.currentOption = 1
+function Talkies.clearMessages()
+  Talkies.showingMessage = false
+  Talkies.showingOptions = false
+  Talkies.currentMsgIndex = 1
+  Talkies.currentMsgKey = 1
+  Talkies.currentOption = 1
   typing = false
   typePosition = 0
   allMessages = {}
 end
 
-function Moan.drawDebug()
-  if Moan.debug == true then
+function Talkies.drawDebug()
+  if Talkies.debug == true then
     log = { -- It works...
       "typing", typing,
-      "paused", Moan.paused,
-      "showOptions", Moan.showingOptions,
+      "paused", Talkies.paused,
+      "showOptions", Talkies.showingOptions,
       "indicatorTimer", indicatorTimer,
-      "showIndicator", Moan.showIndicator,
-      "printedText", Moan.printedText,
-      "textToPrint", Moan.currentMessage,
-      "currentMsgIndex", Moan.currentMsgIndex,
-      "currentMsgKey", Moan.currentMsgKey,
-      "currentOption", Moan.currentOption,
-      "currentHeader", utf8.sub(Moan.currentMessage, utf8.len(Moan.printedText)+1, utf8.len(Moan.printedText)+2),
-      "typeSpeed", Moan.typeSpeed,
-      "typeSound", type(Moan.typeSound) .. " " .. tostring(Moan.typeSound),
+      "showIndicator", Talkies.showIndicator,
+      "printedText", Talkies.printedText,
+      "textToPrint", Talkies.currentMessage,
+      "currentMsgIndex", Talkies.currentMsgIndex,
+      "currentMsgKey", Talkies.currentMsgKey,
+      "currentOption", Talkies.currentOption,
+      "currentHeader", utf8.sub(Talkies.currentMessage, utf8.len(Talkies.printedText)+1, utf8.len(Talkies.printedText)+2),
+      "typeSpeed", Talkies.typeSpeed,
+      "typeSound", type(Talkies.typeSound) .. " " .. tostring(Talkies.typeSound),
       "allMessages.len", #allMessages,
     }
     for i=1, #log, 2 do
@@ -486,4 +475,4 @@ function utf8.sub (s, i, j)
   return string.sub(s, startByte, endByte)
 end
 
-return Moan
+return Talkies
