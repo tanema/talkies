@@ -87,7 +87,6 @@ function Talkies.new(title, messages, config)
   -- Only run .onstart()/setup if first message instance on first Talkies.new
   -- Prevents onstart=Talkies.new(... recursion crashing the game.
   if Talkies.dialogs:len() == 1 then
-    -- Set the first message up, after this is set up via advanceMsg()
     typePosition = 0
     Talkies.dialogs:peek().onstart()
   end
@@ -176,12 +175,10 @@ function Talkies.draw()
   local boxH = Talkies.boxHeight
 
   -- image
-  local imgX, imgY = boxX+Talkies.padding, boxY+Talkies.padding
-  local imgW, imgH, imgH = 0, 0, 0
+  local imgX, imgY, imgW, imgScale = boxX+Talkies.padding, boxY+Talkies.padding, 0, 0
   if currentDialog.image ~= nil then
     imgScale = (Talkies.boxHeight - (Talkies.padding * 2)) / currentDialog.image:getHeight()
     imgW = currentDialog.image:getWidth() * imgScale
-    imgH = currentDialog.image:getHeight() * imgScale
   end
 
   -- title box
@@ -192,14 +189,7 @@ function Talkies.draw()
   local titleX = titleBoxX+Talkies.padding
   local titleY = titleBoxY+2
 
-  local textX = imgX + imgW + Talkies.padding
-  local textY = boxY + 1
-
-  local optionsY = textY+Talkies.font:getHeight(Talkies.printedText)-(Talkies.padding/1.6)
-  local optionsSpace = Talkies.fontHeight/1.5
-
-  local msgTextY = textY+Talkies.font:getHeight()/1.2
-  local msgLimit = boxW - imgW - (4 * Talkies.padding)
+  local textX, textY = imgX + imgW + Talkies.padding, boxY + 1
 
   love.graphics.setFont(Talkies.font)
 
@@ -226,11 +216,14 @@ function Talkies.draw()
   if Talkies.autoWrap then
     love.graphics.print(Talkies.printedText, textX, textY)
   else
-    love.graphics.printf(Talkies.printedText, textX, textY, msgLimit)
+    love.graphics.printf(Talkies.printedText, textX, textY, boxW - imgW - (4 * Talkies.padding))
   end
 
   -- Message options (when shown)
   if currentDialog:showOptions() and typing == false then
+    local optionsY = textY+Talkies.font:getHeight(Talkies.printedText)-(Talkies.padding/1.6)
+    local optionsSpace = Talkies.fontHeight/1.5
+
     for k, option in pairs(currentDialog.options) do
       local prefix = k == currentDialog.optionIndex and Talkies.optionCharacter.." " or ""
       love.graphics.print(prefix .. option[1], textX+Talkies.padding, optionsY+((k-1)*optionsSpace))

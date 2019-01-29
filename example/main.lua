@@ -37,9 +37,8 @@ end
 
 function love.draw()
   love.graphics.print(
-    "Möan.lua demo - twentytwoo\n ==================\n" ..
+    "Talkies demo" ..
     "'spacebar': Cycle through messages \n" ..
-    "'f': Force message cycle \n" ..
     "'c': Clear all messages \n" ..
     "'m': Add a single message to the queue \n", 10, 100)
   talkies.draw()
@@ -48,8 +47,7 @@ end
 function love.keyreleased(key)
   -- Pass keypresses to talkies
   talkies.keyreleased(key)
-  if key == "f" then talkies.advanceMsg()
-  elseif key == "c" then talkies.clearMessages()
+  if key == "c" then talkies.clearMessages()
   elseif key == "m" then talkies.new("Title", "Message one", "two", "and three...", {onstart=function() rand() end})
   elseif key == "escape" then love.event.quit()
   end
