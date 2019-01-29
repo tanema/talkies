@@ -1,7 +1,7 @@
 --
--- Möan.lua
+-- talkies
 --
--- Copyright (c) 2017 twentytwoo
+-- Copyright (c) 2017 twentytwoo, tanema
 --
 -- This library is free software; you can redistribute it and/or modify it
 -- under the terms of the MIT license. See LICENSE for details.
@@ -13,12 +13,10 @@ local Fifo = {}
 function Fifo.new () return setmetatable({first=0,last=-1},{__index=Fifo}) end
 function Fifo:peek() return self[self.first] end
 function Fifo:len() return (self.last+1)-self.first end
-
 function Fifo:push(value)
   self.last = self.last + 1
   self[self.last] = value
 end
-
 function Fifo:pop()
   if self.first > self.last then return end
   local value = self[self.first]
@@ -27,18 +25,67 @@ function Fifo:pop()
   return value
 end
 
-local typeTimer    = 0.01 -- Timer to know when to print a new letter
-local typeTimerMax = 0.01
-local typing       = false
-local typePosition = 0 -- Current position in the text
-local indicatorTimer = 0 -- Initialise timer for the indicator
+local Typer = {}
+function Typer.new(max)
+  local typer = setmetatable({timerMax = max},{__index=Typer})
+  typer:reset()
+  return typer
+end
+
+function Typer:reset()
+  self.complete, self.paused = false, false
+  self.timer = self.timerMax
+  self.position = 0
+end
+
+function Typer:update(typeSound, msg, dt)
+  if self.complete then
+    return msg
+  end
+
+  if not self.paused then
+    self.timer = self.timer - dt
+    if self.timer <= 0 then
+      if string.sub(msg, self.position, self.position) ~= " " then
+        playSound(typeSound)
+      end
+      self.timer = self.timerMax
+      self.position = self.position + 1
+    end
+  end
+
+  local byteoffset = utf8.offset(msg, self.position)
+  local part = ""
+  if byteoffset then
+    part = string.sub(msg, 0, byteoffset - 1)
+  end
+
+  self.complete = (part == msg)
+  self.paused = string.sub(msg, string.len(part)+1, string.len(part)+2) == "--"
+
+  return part
+end
+
+function Typer:setSpeed(speed)
+  if speed == "fast" then
+    self.timerMax = 0.01
+  elseif speed == "medium" then
+    self.timerMax = 0.04
+  elseif speed == "slow" then
+    self.timerMax = 0.08
+  else
+    assert(tonumber(speed), "setSpeed() - Expected number, got " .. tostring(speed))
+    self.timerMax = speed
+  end
+end
+
+local indicatorTimer = 0     -- Initialise timer for the indicator
 
 local Talkies = {
   _VERSION     = '0.0.1',
   _URL         = 'https://github.com/tanema/talkies',
   _DESCRIPTION = 'A simple messagebox system for LÖVE',
 
-  printedText        = "",        -- Section of the text printed so far
   indicatorCharacter = ">",       -- Next message indicator
   optionCharacter    = "- ",      -- Option select character
   indicatorDelay     = 100,       -- Delay between each flash of indicator
@@ -48,8 +95,11 @@ local Talkies = {
   fontHeight         = love.graphics.newFont():getHeight(" "),
   boxHeight          = 118,
   padding            = 10,
+  autoWrap           = false,
+  showIndicator      = false,
 
   dialogs            = Fifo.new(),
+  typer              = Typer.new(0.01),
 }
 
 function Talkies.new(title, messages, config)
@@ -78,16 +128,14 @@ function Talkies.new(title, messages, config)
 
     msgIndex      = 1,
     optionIndex   = 1,
+    printedText   = "",
 
     showOptions = function(dialog) return dialog:nextMessage() == nil and type(dialog.options) == "table" end,
     currentMessage = function(dialog) return dialog.messages[dialog.msgIndex] end,
     nextMessage = function(dialog) return dialog.messages[dialog.msgIndex+1] end,
   })
 
-  -- Only run .onstart()/setup if first message instance on first Talkies.new
-  -- Prevents onstart=Talkies.new(... recursion crashing the game.
   if Talkies.dialogs:len() == 1 then
-    typePosition = 0
     Talkies.dialogs:peek().onstart()
   end
 end
@@ -95,13 +143,9 @@ end
 function Talkies.update(dt)
   local currentDialog = Talkies.dialogs:peek()
   if currentDialog == nil then return end
-  local currentMessage = currentDialog:currentMessage()
-
-  -- Check if the output string is equal to final string, else we must be still typing it
-  typing = (Talkies.printedText ~= currentMessage)
 
   -- Tiny timer for the message indicator
-  if (Talkies.paused or not typing) then
+  if (Talkies.typer.paused or Talkies.typer.complete) then
     indicatorTimer = indicatorTimer + 1
     if indicatorTimer > Talkies.indicatorDelay then
       Talkies.showIndicator = not Talkies.showIndicator
@@ -111,33 +155,7 @@ function Talkies.update(dt)
     Talkies.showIndicator = false
   end
 
-  -- Detect a 'pause' by checking the content of the last two characters in the printedText
-  Talkies.paused = (string.sub(currentMessage, string.len(Talkies.printedText)+1, string.len(Talkies.printedText)+2) == "--")
-
-  --https://www.reddit.com/r/love2d/comments/4185xi/quick_question_typing_effect/
-  if typePosition <= string.len(currentMessage) then
-    -- Only decrease the timer when not paused
-    if not Talkies.paused then
-      typeTimer = typeTimer - dt
-    end
-
-    -- Timer done, we need to print a new letter:
-    -- Adjust position, use string.sub to get sub-string
-    if typeTimer <= 0 then
-      -- Only make the keypress sound if the next character is a letter
-      if string.sub(currentMessage, typePosition, typePosition) ~= " " and typing then
-        Talkies.playSound(Talkies.typeSound)
-      end
-      typeTimer = typeTimerMax
-      typePosition = typePosition + 1
-
-      -- UTF8 support, thanks @FluffySifilis
-      local byteoffset = utf8.offset(currentMessage, typePosition)
-      if byteoffset then
-        Talkies.printedText = string.sub(currentMessage, 0, byteoffset - 1)
-      end
-    end
-  end
+  currentDialog.printedText = Talkies.typer:update(Talkies.typeSound, currentDialog:currentMessage(), dt)
 end
 
 function Talkies.advanceMsg()
@@ -146,7 +164,7 @@ function Talkies.advanceMsg()
   if currentDialog:nextMessage()  == nil then
     currentDialog.oncomplete()
     Talkies.dialogs:pop()
-    typePosition = 0
+    Talkies.typer:reset()
     if Talkies.dialogs:len() == 0 then
       Talkies.clearMessages()
       return
@@ -155,7 +173,7 @@ function Talkies.advanceMsg()
     end
   else
     currentDialog.msgIndex = currentDialog.msgIndex  + 1
-    typePosition = 0
+    Talkies.typer:reset()
   end
 end
 
@@ -214,16 +232,15 @@ function Talkies.draw()
   -- Message text
   love.graphics.setColor(currentDialog.messageColor)
   if Talkies.autoWrap then
-    love.graphics.print(Talkies.printedText, textX, textY)
+    love.graphics.print(currentDialog.printedText, textX, textY)
   else
-    love.graphics.printf(Talkies.printedText, textX, textY, boxW - imgW - (4 * Talkies.padding))
+    love.graphics.printf(currentDialog.printedText, textX, textY, boxW - imgW - (4 * Talkies.padding))
   end
 
   -- Message options (when shown)
-  if currentDialog:showOptions() and typing == false then
-    local optionsY = textY+Talkies.font:getHeight(Talkies.printedText)-(Talkies.padding/1.6)
+  if currentDialog:showOptions() and Talkies.typer.complete then
+    local optionsY = textY+Talkies.font:getHeight(currentDialog.printedText)-(Talkies.padding/1.6)
     local optionsSpace = Talkies.fontHeight/1.5
-
     for k, option in pairs(currentDialog.options) do
       local prefix = k == currentDialog.optionIndex and Talkies.optionCharacter.." " or ""
       love.graphics.print(prefix .. option[1], textX+Talkies.padding, optionsY+((k-1)*optionsSpace))
@@ -245,23 +262,23 @@ function Talkies.keyreleased(key)
   local currentMessage = currentDialog:currentMessage()
 
   if currentDialog:showOptions() then
-    if key == Talkies.selectButton and not typing then
+    if key == Talkies.selectButton and Talkies.typer.complete then
       if currentDialog:nextMessage() == nil then
         -- Execute the selected function
         for i=1, #currentDialog.options do
           if currentDialog.optionIndex == i then
             currentDialog.options[i][2]()
-            Talkies.playSound(Talkies.optionSwitchSound)
+            playSound(Talkies.optionSwitchSound)
           end
         end
       end
       -- Option selection
       elseif key == "down" or key == "s" then
         currentDialog.optionIndex = currentDialog.optionIndex + 1
-        Talkies.playSound(Talkies.optionSwitchSound)
+        playSound(Talkies.optionSwitchSound)
       elseif key == "up" or key == "w" then
         currentDialog.optionIndex = currentDialog.optionIndex - 1
-        Talkies.playSound(Talkies.optionSwitchSound)
+        playSound(Talkies.optionSwitchSound)
       end
       -- Return to top/bottom of options on overflow
       if currentDialog.optionIndex < 1 then
@@ -270,22 +287,13 @@ function Talkies.keyreleased(key)
         currentDialog.optionIndex = 1
     end
   end
-  -- Check if we're still typing, if we are we can skip it
-  -- If not, then go to next message/instance
   if key == Talkies.selectButton then
-    if Talkies.paused then
-      -- Get the text left and right of "--"
-      leftSide = string.sub(currentMessage, 1, string.len(Talkies.printedText))
-      rightSide = string.sub(currentMessage, string.len(Talkies.printedText)+3, string.len(currentMessage))
-      -- And then concatenate them, thanks @pfirsich
-      currentDialog.messages[currentDialog.msgIndex] = leftSide .. " " .. rightSide
-      -- Put the typerwriter back a bit and start up again
-      typePosition = typePosition - 1
-      typeTimer = 0
+    if Talkies.typer.paused then
+      currentDialog.messages[currentDialog.msgIndex] = currentMessage:gsub("-+", " ", 1)
+      Talkies.typer.paused = false
     else
-      if typing == true then -- Skip the typing completely
-        Talkies.printedText = currentMessage
-        typePosition = string.len(currentMessage)
+      if not Talkies.typer.complete then
+        Talkies.typer.complete = true
       else
         Talkies.advanceMsg()
       end
@@ -294,18 +302,7 @@ function Talkies.keyreleased(key)
 end
 
 function Talkies.setSpeed(speed)
-  if speed == "fast" then
-    Talkies.typeSpeed = 0.01
-  elseif speed == "medium" then
-    Talkies.typeSpeed = 0.04
-  elseif speed == "slow" then
-    Talkies.typeSpeed = 0.08
-  else
-    assert(tonumber(speed), "Talkies.setSpeed() - Expected number, got " .. tostring(speed))
-    Talkies.typeSpeed = speed
-  end
-  -- Update the timeout timer.
-  typeTimerMax = Talkies.typeSpeed
+  Talkies.typer:setSpeed(speed)
 end
 
 function Talkies.setFont(font)
@@ -345,7 +342,7 @@ function Talkies.wordwrap(str, limit)
   return table.concat(rtn)
 end
 
-function Talkies.playSound(sound)
+function playSound(sound)
   if type(sound) == "userdata" then
     sound:play()
   end
@@ -353,8 +350,7 @@ end
 
 function Talkies.clearMessages()
   Talkies.dialogs = Fifo.new()
-  typing = false
-  typePosition = 0
+  Talkies.typer:reset()
 end
 
 -- External UTF8 functions
