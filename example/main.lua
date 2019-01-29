@@ -20,12 +20,12 @@ function love.load()
   avatar = love.graphics.newImage("assets/Obey_Me.png")
 
   -- Put some messages into the talkies queue
-  talkies.new("Möan.lua", "Hello World!", {image=avatar})
-  talkies.new( "Tutorial",
-    {"Möan.lua is a simple to use messagebox library, it includes;", "Multiple choices,--UTF8 text,--Pauses, --Onstart/Oncomplete functions,--Complete customization,--Variable typing speeds umongst other things."},
-    {image=avatar, onstart=function() rand() end})
-  talkies.new("Tutorial", "Typing sound modulates with speed...",
-    {onstart=function() talkies.setSpeed("slow") end, oncomplete=function() talkies.setSpeed("fast") end})
+  -- talkies.new("Möan.lua", "Hello World!", {image=avatar})
+  -- talkies.new( "Tutorial",
+  --   {"Möan.lua is a simple to use messagebox library, it includes;", "Multiple choices,--UTF8 text,--Pauses, --Onstart/Oncomplete functions,--Complete customization,--Variable typing speeds umongst other things."},
+  --   {image=avatar, onstart=function() rand() end})
+  -- talkies.new("Tutorial", "Typing sound modulates with speed...",
+  --   {onstart=function() talkies.setSpeed("slow") end, oncomplete=function() talkies.setSpeed("fast") end})
   talkies.new("Tutorial", "Here's some options:",
     {options={{"Red", function() red() end}, {"Blue", function() blue() end}, {"Green", function() green() end}}})
 end
@@ -53,6 +53,8 @@ function love.keyreleased(key)
     talkies.clearMessages()
   elseif key == "m" then
     talkies.new("Title", "Message one", "two", "and three...", {onstart=function() rand() end})
+  elseif key == "escape" then
+    love.event.quit()
   end
 end
 

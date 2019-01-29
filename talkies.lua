@@ -49,9 +49,6 @@ local Talkies = {
   font               = love.graphics.newFont(),
   fontHeight         = love.graphics.newFont():getHeight(" "),
 
-  showingMessage     = false,
-  showingOptions     = false,
-
   dialogs            = Fifo.new(),
 }
 
@@ -61,7 +58,6 @@ function Talkies.new(title, messages, config)
     messages = { messages }
   end
 
-  -- Insert \n before text is printed, stops half-words being printed and then wrapped onto new line
   if Talkies.autoWrap then
     for i=1, #messages do
       messages[i] = Talkies.wordwrap(messages[i], 65)
@@ -72,8 +68,6 @@ function Talkies.new(title, messages, config)
   Talkies.dialogs:push({
     title      = title,
     messages   = messages,
-    x          = config.x,
-    y          = config.y,
     titleColor = config.titleColor,
     boxColor   = config.boxColor,
     image      = config.image,
@@ -84,26 +78,23 @@ function Talkies.new(title, messages, config)
     msgIndex      = 1,
     optionIndex = 1,
 
+    showOptions = function(dialog) return dialog:nextMessage() == nil and type(dialog.options) == "table" end,
     currentMessage = function(dialog) return dialog.messages[dialog.msgIndex] end,
     nextMessage = function(dialog) return dialog.messages[dialog.msgIndex+1] end,
   })
-
-  Talkies.showingMessage = true
 
   -- Only run .onstart()/setup if first message instance on first Talkies.new
   -- Prevents onstart=Talkies.new(... recursion crashing the game.
   if Talkies.dialogs:len() == 1 then
     -- Set the first message up, after this is set up via advanceMsg()
     typePosition = 0
-    Talkies.showingOptions = false
     Talkies.dialogs:peek().onstart()
   end
 end
 
 function Talkies.update(dt)
-  if not Talkies.showingMessage then return end
-
   local currentDialog = Talkies.dialogs:peek()
+  if currentDialog == nil then return end
   local currentMessage = currentDialog:currentMessage()
 
   -- Check if the output string is equal to final string, else we must be still typing it
@@ -118,21 +109,6 @@ function Talkies.update(dt)
     end
   else
     Talkies.showIndicator = false
-  end
-
-  -- Check if we're the 2nd to last message, verify if an options table exists, on next advance show options
-  Talkies.showingOptions = currentDialog:nextMessage() == nil and type(currentDialog.options) == "table"
-
-  -- Constantly update the option prefix
-  if Talkies.showingOptions then
-    -- Remove the indicators from other selections
-    for i=1, #currentDialog.options do
-      currentDialog.options[i][1] = string.gsub(currentDialog.options[i][1], Talkies.optionCharacter.." " , "")
-    end
-    -- Add an indicator to the current selection
-    if currentDialog.options[currentDialog.optionIndex][1] ~= "" then
-      currentDialog.options[currentDialog.optionIndex][1] = Talkies.optionCharacter.." ".. currentDialog.options[currentDialog.optionIndex][1]
-    end
   end
 
   -- Detect a 'pause' by checking the content of the last two characters in the printedText
@@ -166,13 +142,10 @@ end
 
 function Talkies.advanceMsg()
   local currentDialog = Talkies.dialogs:peek()
-
-  if not Talkies.showingMessage or currentDialog == nil then return end
-
+  if currentDialog == nil then return end
   if currentDialog:nextMessage()  == nil then
     currentDialog.oncomplete()
     Talkies.dialogs:pop()
-    Talkies.showingOptions = false
     typePosition = 0
     if Talkies.dialogs:len() == 0 then
       Talkies.clearMessages()
@@ -187,12 +160,12 @@ function Talkies.advanceMsg()
 end
 
 function Talkies.draw()
-  if not Talkies.showingMessage then return end
+  local currentDialog = Talkies.dialogs:peek()
+  if currentDialog == nil then return end
 
   love.graphics.push()
   love.graphics.setDefaultFilter("nearest", "nearest")
 
-  local currentDialog = Talkies.dialogs:peek()
   local currentMessage = currentDialog:currentMessage()
 
   local scale = 0.26
@@ -262,9 +235,10 @@ function Talkies.draw()
   end
 
   -- Message options (when shown)
-  if Talkies.showingOptions and typing == false then
+  if currentDialog:showOptions() and typing == false then
     for k, option in pairs(currentDialog.options) do
-      love.graphics.print(option[1], textX+padding, optionsY+((k-1)*optionsSpace))
+      local prefix = k == currentDialog.optionIndex and Talkies.optionCharacter.." " or ""
+      love.graphics.print(prefix .. option[1], textX+padding, optionsY+((k-1)*optionsSpace))
     end
   end
 
@@ -282,7 +256,7 @@ function Talkies.keyreleased(key)
 
   local currentMessage = currentDialog:currentMessage()
 
-  if Talkies.showingOptions then
+  if currentDialog:showOptions() then
     if key == Talkies.selectButton and not typing then
       if currentDialog:nextMessage() == nil then
         -- Execute the selected function
@@ -390,8 +364,6 @@ function Talkies.playSound(sound)
 end
 
 function Talkies.clearMessages()
-  Talkies.showingMessage = false
-  Talkies.showingOptions = false
   typing = false
   typePosition = 0
 end
