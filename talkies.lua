@@ -6,18 +6,34 @@
 -- This library is free software; you can redistribute it and/or modify it
 -- under the terms of the MIT license. See LICENSE for details.
 --
+-- currentMessage
+--
 local utf8 = require("utf8")
 local PATH = (...):match('^(.*[%./])[^%.%/]+$') or ''
+
+local Fifo = {}
+function Fifo.new () return setmetatable({first=0,last=-1},{__index=Fifo}) end
+function Fifo:peek() return self[self.first] end
+function Fifo:len() return (self.last+1)-self.first end
+
+function Fifo:push(value)
+  self.last = self.last + 1
+  self[self.last] = value
+end
+
+function Fifo:pop()
+  if self.first > self.last then return end
+  local value = self[self.first]
+  self[self.first] = nil
+  self.first = self.first + 1
+  return value
+end
 
 local typeTimer    = 0.01 -- Timer to know when to print a new letter
 local typeTimerMax = 0.01
 local typing       = false
 local typePosition = 0 -- Current position in the text
-
--- Initialise timer for the indicator
-local indicatorTimer = 0
-local defaultFont = love.graphics.newFont()
-local allMessages = {} -- Create the message instance container
+local indicatorTimer = 0 -- Initialise timer for the indicator
 
 local Talkies = {
   _VERSION     = '0.0.1',
@@ -27,16 +43,16 @@ local Talkies = {
   printedText        = "",        -- Section of the text printed so far
   indicatorCharacter = ">",       -- Next message indicator
   optionCharacter    = "- ",      -- Option select character
-  indicatorDelay     = 25,        -- Delay between each flash of indicator
+  indicatorDelay     = 100,        -- Delay between each flash of indicator
   selectButton       = "space",   -- Key that advances message
   typeSpeed          = typeTimer, -- Delay per character typed out
-  debug              = false,     -- Display some debugging
-  font               = defaultFont,
-  currentMessage     = "",
-  currentMsgIndex    = 1,
-  currentMsgKey      = 1,         -- Key of value in the Talkies.new messages
-  currentOption      = 1,         -- Key of option function in Talkies.new option array
-  currentImage       = nil,       -- Avatar image
+  font               = love.graphics.newFont(),
+  fontHeight         = love.graphics.newFont():getHeight(" "),
+
+  showingMessage     = false,
+  showingOptions     = false,
+
+  dialogs            = Fifo.new(),
 }
 
 function Talkies.new(title, messages, config)
@@ -44,11 +60,8 @@ function Talkies.new(title, messages, config)
   if type(messages) ~= "table" then
     messages = { messages }
   end
-  -- Set the last message as "\n", an indicator to change currentMsgIndex
-  messages[#messages+1] = "\n"
 
-  -- Insert \n before text is printed, stops half-words being printed
-  -- and then wrapped onto new line
+  -- Insert \n before text is printed, stops half-words being printed and then wrapped onto new line
   if Talkies.autoWrap then
     for i=1, #messages do
       messages[i] = Talkies.wordwrap(messages[i], 65)
@@ -56,7 +69,7 @@ function Talkies.new(title, messages, config)
   end
 
   -- Insert the Talkies.new into its own instance (table)
-  allMessages[#allMessages+1] = {
+  Talkies.dialogs:push({
     title      = title,
     messages   = messages,
     x          = config.x,
@@ -66,30 +79,35 @@ function Talkies.new(title, messages, config)
     image      = config.image,
     options    = config.options,
     onstart    = config.onstart or function() end,
-    oncomplete = config.oncomplete or function() end
-  }
+    oncomplete = config.oncomplete or function() end,
+
+    msgIndex      = 1,
+    optionIndex = 1,
+
+    currentMessage = function(dialog) return dialog.messages[dialog.msgIndex] end,
+    nextMessage = function(dialog) return dialog.messages[dialog.msgIndex+1] end,
+  })
 
   Talkies.showingMessage = true
 
   -- Only run .onstart()/setup if first message instance on first Talkies.new
   -- Prevents onstart=Talkies.new(... recursion crashing the game.
-  if Talkies.currentMsgIndex == 1 then
+  if Talkies.dialogs:len() == 1 then
     -- Set the first message up, after this is set up via advanceMsg()
     typePosition = 0
-    Talkies.currentMessage = allMessages[Talkies.currentMsgIndex].messages[Talkies.currentMsgKey]
-    Talkies.currentTitle = allMessages[Talkies.currentMsgIndex].title
-    Talkies.currentImage = allMessages[Talkies.currentMsgIndex].image
     Talkies.showingOptions = false
-    -- Run the first startup function
-    allMessages[Talkies.currentMsgIndex].onstart()
+    Talkies.dialogs:peek().onstart()
   end
 end
 
 function Talkies.update(dt)
-  -- Check if the output string is equal to final string, else we must be still typing it
-  typing = (Talkies.printedText ~= Talkies.currentMessage)
-
   if not Talkies.showingMessage then return end
+
+  local currentDialog = Talkies.dialogs:peek()
+  local currentMessage = currentDialog:currentMessage()
+
+  -- Check if the output string is equal to final string, else we must be still typing it
+  typing = (Talkies.printedText ~= currentMessage)
 
   -- Tiny timer for the message indicator
   if (Talkies.paused or not typing) then
@@ -103,28 +121,25 @@ function Talkies.update(dt)
   end
 
   -- Check if we're the 2nd to last message, verify if an options table exists, on next advance show options
-  if allMessages[Talkies.currentMsgIndex].messages[Talkies.currentMsgKey+1] == "\n" and type(allMessages[Talkies.currentMsgIndex].options) == "table" then
-    Talkies.showingOptions = true
-  end
+  Talkies.showingOptions = currentDialog:nextMessage() == nil and type(currentDialog.options) == "table"
 
   -- Constantly update the option prefix
   if Talkies.showingOptions then
     -- Remove the indicators from other selections
-    for i=1, #allMessages[Talkies.currentMsgIndex].options do
-      allMessages[Talkies.currentMsgIndex].options[i][1] = string.gsub(allMessages[Talkies.currentMsgIndex].options[i][1], Talkies.optionCharacter.." " , "")
+    for i=1, #currentDialog.options do
+      currentDialog.options[i][1] = string.gsub(currentDialog.options[i][1], Talkies.optionCharacter.." " , "")
     end
-
     -- Add an indicator to the current selection
-    if allMessages[Talkies.currentMsgIndex].options[Talkies.currentOption][1] ~= "" then
-      allMessages[Talkies.currentMsgIndex].options[Talkies.currentOption][1] = Talkies.optionCharacter.." ".. allMessages[Talkies.currentMsgIndex].options[Talkies.currentOption][1]
+    if currentDialog.options[currentDialog.optionIndex][1] ~= "" then
+      currentDialog.options[currentDialog.optionIndex][1] = Talkies.optionCharacter.." ".. currentDialog.options[currentDialog.optionIndex][1]
     end
   end
 
   -- Detect a 'pause' by checking the content of the last two characters in the printedText
-  Talkies.paused = (string.sub(Talkies.currentMessage, string.len(Talkies.printedText)+1, string.len(Talkies.printedText)+2) == "--")
+  Talkies.paused = (string.sub(currentMessage, string.len(Talkies.printedText)+1, string.len(Talkies.printedText)+2) == "--")
 
   --https://www.reddit.com/r/love2d/comments/4185xi/quick_question_typing_effect/
-  if typePosition <= string.len(Talkies.currentMessage) then
+  if typePosition <= string.len(currentMessage) then
     -- Only decrease the timer when not paused
     if not Talkies.paused then
       typeTimer = typeTimer - dt
@@ -134,55 +149,41 @@ function Talkies.update(dt)
     -- Adjust position, use string.sub to get sub-string
     if typeTimer <= 0 then
       -- Only make the keypress sound if the next character is a letter
-      if string.sub(Talkies.currentMessage, typePosition, typePosition) ~= " " and typing then
+      if string.sub(currentMessage, typePosition, typePosition) ~= " " and typing then
         Talkies.playSound(Talkies.typeSound)
       end
       typeTimer = typeTimerMax
       typePosition = typePosition + 1
 
       -- UTF8 support, thanks @FluffySifilis
-      local byteoffset = utf8.offset(Talkies.currentMessage, typePosition)
+      local byteoffset = utf8.offset(currentMessage, typePosition)
       if byteoffset then
-        Talkies.printedText = string.sub(Talkies.currentMessage, 0, byteoffset - 1)
+        Talkies.printedText = string.sub(currentMessage, 0, byteoffset - 1)
       end
     end
   end
 end
 
 function Talkies.advanceMsg()
-  if not Talkies.showingMessage then return end
+  local currentDialog = Talkies.dialogs:peek()
 
-  -- Check if we're at the last message in the instances queue (+1 because "\n" indicated end of instance)
-  if allMessages[Talkies.currentMsgIndex].messages[Talkies.currentMsgKey+1] == "\n" then
-    -- Last message in instance, so run the final function.
-    allMessages[Talkies.currentMsgIndex].oncomplete()
+  if not Talkies.showingMessage or currentDialog == nil then return end
 
-    -- Check if we're the last instance in allMessages
-    if allMessages[Talkies.currentMsgIndex+1] == nil then
+  if currentDialog:nextMessage()  == nil then
+    currentDialog.oncomplete()
+    Talkies.dialogs:pop()
+    Talkies.showingOptions = false
+    typePosition = 0
+    if Talkies.dialogs:len() == 0 then
       Talkies.clearMessages()
       return
     else
-      -- We're not the last instance, so we can go to the next one
-      -- Reset the msgKey such that we read the first msg of the new instance
-      Talkies.currentMsgIndex = Talkies.currentMsgIndex + 1
-      Talkies.currentMsgKey = 1
-      Talkies.currentOption = 1
-      typePosition = 0
-      Talkies.showingOptions = false
+      Talkies.dialogs:peek().onstart()
     end
   else
-    -- We're not the last message and we can show the next one
-    -- Reset type position to restart typing
-    Talkies.currentMsgKey = Talkies.currentMsgKey + 1
+    currentDialog.msgIndex = currentDialog.msgIndex  + 1
     typePosition = 0
   end
-
-  if Talkies.currentMsgKey == 1 then
-    allMessages[Talkies.currentMsgIndex].onstart()
-  end
-  Talkies.currentMessage = allMessages[Talkies.currentMsgIndex].messages[Talkies.currentMsgKey] or ""
-  Talkies.currentTitle = allMessages[Talkies.currentMsgIndex].title or ""
-  Talkies.currentImage = allMessages[Talkies.currentMsgIndex].image
 end
 
 function Talkies.draw()
@@ -190,6 +191,10 @@ function Talkies.draw()
 
   love.graphics.push()
   love.graphics.setDefaultFilter("nearest", "nearest")
+
+  local currentDialog = Talkies.dialogs:peek()
+  local currentMessage = currentDialog:currentMessage()
+
   local scale = 0.26
   local padding = 10
 
@@ -202,19 +207,17 @@ function Talkies.draw()
   local imgY = (boxY+padding)*(1/scale)
   local imgW = 0
   local imgH = 0
-  if Talkies.currentImage ~= nil then
-    imgW = Talkies.currentImage:getWidth()
-    imgH = Talkies.currentImage:getHeight()
+  if currentDialog.image ~= nil then
+    imgW = currentDialog.image:getWidth()
+    imgH = currentDialog.image:getHeight()
   end
 
-  local fontHeight = Talkies.font:getHeight(" ")
-
-  local titleBoxW = Talkies.font:getWidth(Talkies.currentTitle)+(2*padding)
-  local titleBoxH = fontHeight+padding
+  local titleBoxW = Talkies.font:getWidth(currentDialog.title)+(2*padding)
+  local titleBoxH = Talkies.fontHeight+padding
   local titleBoxX = boxX
   local titleBoxY = boxY-titleBoxH-(padding/2)
 
-  local titleColor = allMessages[Talkies.currentMsgIndex].titleColor or {255, 255, 255}
+  local titleColor = currentDialog.titleColor or {255, 255, 255}
   local titleX = titleBoxX+padding
   local titleY = titleBoxY+2
 
@@ -222,13 +225,13 @@ function Talkies.draw()
   local textY = boxY+1
 
   local optionsY = textY+Talkies.font:getHeight(Talkies.printedText)-(padding/1.6)
-  local optionsSpace = fontHeight/1.5
+  local optionsSpace = Talkies.fontHeight/1.5
 
   local msgTextY = textY+Talkies.font:getHeight()/1.2
   local msgLimit = boxW-(imgW/(1/scale))-(4*padding)
 
-  local messageColour = allMessages[Talkies.currentMsgIndex].messageColor or {255, 255, 255}
-  local boxColor = allMessages[Talkies.currentMsgIndex].boxColor or { 0, 0, 0, 222 }
+  local messageColour = currentDialog.messageColor or {255, 255, 255}
+  local boxColor = currentDialog.boxColor or { 0, 0, 0, 222 }
 
   love.graphics.setFont(Talkies.font)
 
@@ -236,7 +239,7 @@ function Talkies.draw()
   love.graphics.setColor(boxColor)
   love.graphics.rectangle("fill", titleBoxX, titleBoxY, titleBoxW, titleBoxH)
   love.graphics.setColor(titleColor)
-  love.graphics.print(Talkies.currentTitle, titleX, titleY)
+  love.graphics.print(currentDialog.title, titleX, titleY)
 
   -- Main message box
   love.graphics.setColor(boxColor)
@@ -244,10 +247,10 @@ function Talkies.draw()
   love.graphics.setColor(messageColour)
 
   -- Message avatar
-  if Talkies.currentImage ~= nil then
+  if currentDialog.image ~= nil then
     love.graphics.push()
       love.graphics.scale(scale, scale)
-      love.graphics.draw(Talkies.currentImage, imgX, imgY)
+      love.graphics.draw(currentDialog.image, imgX, imgY)
     love.graphics.pop()
   end
 
@@ -260,45 +263,49 @@ function Talkies.draw()
 
   -- Message options (when shown)
   if Talkies.showingOptions and typing == false then
-    for k, option in pairs(allMessages[Talkies.currentMsgIndex].options) do
-      -- First option has no Y padding...
+    for k, option in pairs(currentDialog.options) do
       love.graphics.print(option[1], textX+padding, optionsY+((k-1)*optionsSpace))
     end
   end
 
   -- Next message/continue indicator
   if Talkies.showIndicator then
-    love.graphics.print(Talkies.indicatorCharacter, boxX+boxW-(2.5*padding), boxY+boxH-(padding/2)-fontHeight)
+    love.graphics.print(Talkies.indicatorCharacter, boxX+boxW-(2.5*padding), boxY+boxH-(padding/2)-Talkies.fontHeight)
   end
 
   love.graphics.pop()
 end
 
 function Talkies.keyreleased(key)
+  local currentDialog = Talkies.dialogs:peek()
+  if currentDialog == nil then return end
+
+  local currentMessage = currentDialog:currentMessage()
+
   if Talkies.showingOptions then
     if key == Talkies.selectButton and not typing then
-      if Talkies.currentMsgKey == #allMessages[Talkies.currentMsgIndex].messages-1 then
+      if currentDialog:nextMessage() == nil then
         -- Execute the selected function
-        for i=1, #allMessages[Talkies.currentMsgIndex].options do
-          if Talkies.currentOption == i then
-            allMessages[Talkies.currentMsgIndex].options[i][2]()
+        for i=1, #currentDialog.options do
+          if currentDialog.optionIndex == i then
+            currentDialog.options[i][2]()
             Talkies.playSound(Talkies.optionSwitchSound)
           end
         end
       end
       -- Option selection
       elseif key == "down" or key == "s" then
-        Talkies.currentOption = Talkies.currentOption + 1
+        currentDialog.optionIndex = currentDialog.optionIndex + 1
         Talkies.playSound(Talkies.optionSwitchSound)
       elseif key == "up" or key == "w" then
-        Talkies.currentOption = Talkies.currentOption - 1
+        currentDialog.optionIndex = currentDialog.optionIndex - 1
         Talkies.playSound(Talkies.optionSwitchSound)
       end
       -- Return to top/bottom of options on overflow
-      if Talkies.currentOption < 1 then
-        Talkies.currentOption = #allMessages[Talkies.currentMsgIndex].options
-      elseif Talkies.currentOption > #allMessages[Talkies.currentMsgIndex].options then
-        Talkies.currentOption = 1
+      if currentDialog.optionIndex < 1 then
+        currentDialog.optionIndex = #currentDialog.options
+      elseif currentDialog.optionIndex > #currentDialog.options then
+        currentDialog.optionIndex = 1
     end
   end
   -- Check if we're still typing, if we are we can skip it
@@ -306,17 +313,17 @@ function Talkies.keyreleased(key)
   if key == Talkies.selectButton then
     if Talkies.paused then
       -- Get the text left and right of "--"
-      leftSide = string.sub(Talkies.currentMessage, 1, string.len(Talkies.printedText))
-      rightSide = string.sub(Talkies.currentMessage, string.len(Talkies.printedText)+3, string.len(Talkies.currentMessage))
+      leftSide = string.sub(currentMessage, 1, string.len(Talkies.printedText))
+      rightSide = string.sub(currentMessage, string.len(Talkies.printedText)+3, string.len(currentMessage))
       -- And then concatenate them, thanks @pfirsich
-      Talkies.currentMessage = leftSide .. " " .. rightSide
+      currentDialog.messages[currentDialog.msgIndex] = leftSide .. " " .. rightSide
       -- Put the typerwriter back a bit and start up again
       typePosition = typePosition - 1
       typeTimer = 0
     else
       if typing == true then -- Skip the typing completely
-        Talkies.printedText = Talkies.currentMessage
-        typePosition = string.len(Talkies.currentMessage)
+        Talkies.printedText = currentMessage
+        typePosition = string.len(currentMessage)
       else
         Talkies.advanceMsg()
       end
@@ -337,6 +344,11 @@ function Talkies.setSpeed(speed)
   end
   -- Update the timeout timer.
   typeTimerMax = Talkies.typeSpeed
+end
+
+function Talkies.setFont(font)
+  Talkies.font = font
+  Talkies.fontHeight = Talkies.font:getHeight(" ")
 end
 
 -- ripped from https://github.com/rxi/lume
@@ -380,12 +392,8 @@ end
 function Talkies.clearMessages()
   Talkies.showingMessage = false
   Talkies.showingOptions = false
-  Talkies.currentMsgIndex = 1
-  Talkies.currentMsgKey = 1
-  Talkies.currentOption = 1
   typing = false
   typePosition = 0
-  allMessages = {}
 end
 
 -- External UTF8 functions

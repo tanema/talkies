@@ -5,8 +5,9 @@ function love.load()
   -- The FontStruction “Pixel UniCode” (https://fontstruct.com/fontstructions/show/908795)
   -- by “ivancr72” is licensed under a Creative Commons Attribution license
   -- (http://creativecommons.org/licenses/by/3.0/)
-  talkies.font = love.graphics.newFont("assets/fonts/Pixel UniCode.ttf", 32)
-  talkies.font:setFallbacks(love.graphics.newFont("assets/fonts/JPfallback.ttf", 32)) -- Add font fallbacks for Japanese characters
+  local pixelFont = love.graphics.newFont("assets/fonts/Pixel UniCode.ttf", 32)
+  pixelFont:setFallbacks(love.graphics.newFont("assets/fonts/JPfallback.ttf", 32)) -- Add font fallbacks for Japanese characters
+  talkies.setFont(pixelFont)
 
   -- Audio from bfxr (https://www.bfxr.net/)
   talkies.typeSound = love.audio.newSource("assets/sfx/typeSound.wav", "static")
