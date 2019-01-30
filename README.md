@@ -47,9 +47,9 @@ end
 - **title** : string
 - **messages**, a string or a table, contains strings
 - **config**, table, contains message configs, takes;
-  * `titleColor`, title text color. Default is `{255, 255, 255}`
-  * `messageColor`, message text color. Default is `{255, 255, 255}`
-  * `boxColor`, background color of the box. Default is `{ 0, 0, 0, 222 }`
+  * `titleColor`, title text color. Default is `{1, 1, 1}`
+  * `messageColor`, message text color. Default is `{1, 1, 1}`
+  * `boxColor`, background color of the box. Default is `{ 0, 0, 0, 0.87 }`
   * `image`, message icon image e.g. `love.graphics.newImage("img.png")`
   * `onstart`, function to be executed on message start
   * `oncomplete`, function executed on message end
