@@ -108,9 +108,9 @@ function Talkies.new(title, messages, config)
   Talkies.dialogs:push({
     title         = title,
     messages      = msgFifo,
-    titleColor    = config.titleColor or {255, 255, 255},
-    messageColor  = config.messageColor or {255, 255, 255},
-    boxColor      = config.boxColor or { 0, 0, 0, 222 },
+    titleColor    = config.titleColor or {1, 1, 1},
+    messageColor  = config.messageColor or {1, 1, 1},
+    boxColor      = config.boxColor or { 0, 0, 0, 0.87 },
     image         = config.image,
     options       = config.options,
     onstart       = config.onstart or function() end,
