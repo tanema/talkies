@@ -10,13 +10,18 @@ local utf8 = require("utf8")
 local PATH = (...):match('^(.*[%./])[^%.%/]+$') or ''
 
 local Fifo = {}
-function Fifo.new () return setmetatable({first=0,last=-1},{__index=Fifo}) end
+function Fifo.new ()
+  return setmetatable({first=0,last=-1},{__index=Fifo})
+end
+
 function Fifo:peek() return self[self.first] end
 function Fifo:len() return (self.last+1)-self.first end
+
 function Fifo:push(value)
   self.last = self.last + 1
   self[self.last] = value
 end
+
 function Fifo:pop()
   if self.first > self.last then return end
   local value = self[self.first]
@@ -39,30 +44,20 @@ function Typer:reset()
 end
 
 function Typer:update(typeSound, msg, dt)
-  if self.complete then
-    return msg
-  end
+  if self.complete then return msg end
 
   if not self.paused then
     self.timer = self.timer - dt
     if self.timer <= 0 then
-      if string.sub(msg, self.position, self.position) ~= " " then
-        playSound(typeSound)
-      end
+      if string.sub(msg, self.position, self.position) ~= " " then playSound(typeSound) end
       self.timer = self.timerMax
       self.position = self.position + 1
     end
   end
 
-  local byteoffset = utf8.offset(msg, self.position)
-  local part = ""
-  if byteoffset then
-    part = string.sub(msg, 0, byteoffset - 1)
-  end
-
+  local part = string.sub(msg, 0, utf8.offset(msg, self.position) - 1)
   self.complete = (part == msg)
   self.paused = string.sub(msg, string.len(part)+1, string.len(part)+2) == "--"
-
   return part
 end
 
@@ -79,25 +74,23 @@ function Typer:setSpeed(speed)
   end
 end
 
-local indicatorTimer = 0     -- Initialise timer for the indicator
-
 local Talkies = {
   _VERSION     = '0.0.1',
   _URL         = 'https://github.com/tanema/talkies',
   _DESCRIPTION = 'A simple messagebox system for LÖVE',
 
-  indicatorCharacter = ">",       -- Next message indicator
-  optionCharacter    = "- ",      -- Option select character
-  indicatorDelay     = 100,       -- Delay between each flash of indicator
-  selectButton       = "space",   -- Key that advances message
-  typeSpeed          = typeTimer, -- Delay per character typed out
-  font               = love.graphics.newFont(),
-  fontHeight         = love.graphics.newFont():getHeight(" "),
+  indicatorCharacter = ">",
+  optionCharacter    = "-",
   boxHeight          = 118,
   padding            = 10,
-  autoWrap           = false,
-  showIndicator      = false,
+  typeSound          = nil,
+  optionSwitchSound  = nil,
+  font               = love.graphics.newFont(),
 
+  indicatorTimer     = 0,
+  indicatorDelay     = 100,
+  showIndicator      = false,
+  fontHeight         = love.graphics.newFont():getHeight(" "),
   dialogs            = Fifo.new(),
   typer              = Typer.new(0.01),
 }
@@ -108,16 +101,13 @@ function Talkies.new(title, messages, config)
     messages = { messages }
   end
 
-  if Talkies.autoWrap then
-    for i=1, #messages do
-      messages[i] = Talkies.wordwrap(messages[i], 65)
-    end
-  end
+  msgFifo = Fifo.new()
+  for i=1, #messages do msgFifo:push(messages[i]) end
 
   -- Insert the Talkies.new into its own instance (table)
   Talkies.dialogs:push({
     title         = title,
-    messages      = messages,
+    messages      = msgFifo,
     titleColor    = config.titleColor or {255, 255, 255},
     messageColor  = config.messageColor or {255, 255, 255},
     boxColor      = config.boxColor or { 0, 0, 0, 222 },
@@ -126,13 +116,10 @@ function Talkies.new(title, messages, config)
     onstart       = config.onstart or function() end,
     oncomplete    = config.oncomplete or function() end,
 
-    msgIndex      = 1,
     optionIndex   = 1,
     printedText   = "",
 
-    showOptions = function(dialog) return dialog:nextMessage() == nil and type(dialog.options) == "table" end,
-    currentMessage = function(dialog) return dialog.messages[dialog.msgIndex] end,
-    nextMessage = function(dialog) return dialog.messages[dialog.msgIndex+1] end,
+    showOptions = function(dialog) return dialog.messages:len() == 1 and type(dialog.options) == "table" end,
   })
 
   if Talkies.dialogs:len() == 1 then
@@ -146,22 +133,22 @@ function Talkies.update(dt)
 
   -- Tiny timer for the message indicator
   if (Talkies.typer.paused or Talkies.typer.complete) then
-    indicatorTimer = indicatorTimer + 1
-    if indicatorTimer > Talkies.indicatorDelay then
+    Talkies.indicatorTimer = Talkies.indicatorTimer + 1
+    if Talkies.indicatorTimer > Talkies.indicatorDelay then
       Talkies.showIndicator = not Talkies.showIndicator
-      indicatorTimer = 0
+      Talkies.indicatorTimer = 0
     end
   else
     Talkies.showIndicator = false
   end
 
-  currentDialog.printedText = Talkies.typer:update(Talkies.typeSound, currentDialog:currentMessage(), dt)
+  currentDialog.printedText = Talkies.typer:update(Talkies.typeSound, currentDialog.messages:peek(), dt)
 end
 
 function Talkies.advanceMsg()
   local currentDialog = Talkies.dialogs:peek()
   if currentDialog == nil then return end
-  if currentDialog:nextMessage()  == nil then
+  if currentDialog.messages:len()  == 1 then
     currentDialog.oncomplete()
     Talkies.dialogs:pop()
     Talkies.typer:reset()
@@ -172,7 +159,7 @@ function Talkies.advanceMsg()
       Talkies.dialogs:peek().onstart()
     end
   else
-    currentDialog.msgIndex = currentDialog.msgIndex  + 1
+    currentDialog.messages:pop()
     Talkies.typer:reset()
   end
 end
@@ -183,8 +170,6 @@ function Talkies.draw()
 
   love.graphics.push()
   love.graphics.setDefaultFilter("nearest", "nearest")
-
-  local currentMessage = currentDialog:currentMessage()
 
   -- message box
   local boxX = Talkies.padding
@@ -231,11 +216,7 @@ function Talkies.draw()
 
   -- Message text
   love.graphics.setColor(currentDialog.messageColor)
-  if Talkies.autoWrap then
-    love.graphics.print(currentDialog.printedText, textX, textY)
-  else
-    love.graphics.printf(currentDialog.printedText, textX, textY, boxW - imgW - (4 * Talkies.padding))
-  end
+  love.graphics.printf(currentDialog.printedText, textX, textY, boxW - imgW - (4 * Talkies.padding))
 
   -- Message options (when shown)
   if currentDialog:showOptions() and Talkies.typer.complete then
@@ -255,49 +236,38 @@ function Talkies.draw()
   love.graphics.pop()
 end
 
-function Talkies.keyreleased(key)
+function Talkies.prevOption()
+  local currentDialog = Talkies.dialogs:peek()
+  if currentDialog == nil or not currentDialog:showOptions() then return end
+  currentDialog.optionIndex = currentDialog.optionIndex - 1
+  if currentDialog.optionIndex < 1 then currentDialog.optionIndex = #currentDialog.options end
+  playSound(Talkies.optionSwitchSound)
+end
+
+function Talkies.nextOption()
+  local currentDialog = Talkies.dialogs:peek()
+  if currentDialog == nil or not currentDialog:showOptions() then return end
+  currentDialog.optionIndex = currentDialog.optionIndex + 1
+  if currentDialog.optionIndex > #currentDialog.options then currentDialog.optionIndex = 1 end
+  playSound(Talkies.optionSwitchSound)
+end
+
+function Talkies.onAction()
   local currentDialog = Talkies.dialogs:peek()
   if currentDialog == nil then return end
 
-  local currentMessage = currentDialog:currentMessage()
-
-  if currentDialog:showOptions() then
-    if key == Talkies.selectButton and Talkies.typer.complete then
-      if currentDialog:nextMessage() == nil then
-        -- Execute the selected function
-        for i=1, #currentDialog.options do
-          if currentDialog.optionIndex == i then
-            currentDialog.options[i][2]()
-            playSound(Talkies.optionSwitchSound)
-          end
-        end
-      end
-      -- Option selection
-      elseif key == "down" or key == "s" then
-        currentDialog.optionIndex = currentDialog.optionIndex + 1
-        playSound(Talkies.optionSwitchSound)
-      elseif key == "up" or key == "w" then
-        currentDialog.optionIndex = currentDialog.optionIndex - 1
-        playSound(Talkies.optionSwitchSound)
-      end
-      -- Return to top/bottom of options on overflow
-      if currentDialog.optionIndex < 1 then
-        currentDialog.optionIndex = #currentDialog.options
-      elseif currentDialog.optionIndex > #currentDialog.options then
-        currentDialog.optionIndex = 1
+  if Talkies.typer.paused then
+    currentDialog.messages[currentDialog.messages.first] = currentDialog.messages:peek():gsub("-+", " ", 1)
+    Talkies.typer.paused = false
+  elseif not Talkies.typer.complete then
+    currentDialog.messages[currentDialog.messages.first] = currentDialog.messages:peek():gsub("-+", " ")
+    Talkies.typer.complete = true
+  else
+    if currentDialog:showOptions() then
+      currentDialog.options[currentDialog.optionIndex][2]() -- Execute the selected function
+      playSound(Talkies.optionSwitchSound)
     end
-  end
-  if key == Talkies.selectButton then
-    if Talkies.typer.paused then
-      currentDialog.messages[currentDialog.msgIndex] = currentMessage:gsub("-+", " ", 1)
-      Talkies.typer.paused = false
-    else
-      if not Talkies.typer.complete then
-        Talkies.typer.complete = true
-      else
-        Talkies.advanceMsg()
-      end
-    end
+    Talkies.advanceMsg()
   end
 end
 
@@ -308,38 +278,6 @@ end
 function Talkies.setFont(font)
   Talkies.font = font
   Talkies.fontHeight = Talkies.font:getHeight(" ")
-end
-
--- ripped from https://github.com/rxi/lume
-function Talkies.wordwrap(str, limit)
-  limit = limit or 72
-  local check
-  if type(limit) == "number" then
-    check = function(s) return #s >= limit end
-  else
-    check = limit
-  end
-  local rtn = {}
-  local line = ""
-  for word, spaces in str:gmatch("(%S+)(%s*)") do
-    local s = line .. word
-    if check(s) then
-      table.insert(rtn, line .. "\n")
-      line = word
-    else
-      line = s
-    end
-    for c in spaces:gmatch(".") do
-      if c == "\n" then
-        table.insert(rtn, line .. "\n")
-        line = ""
-      else
-        line = line .. c
-      end
-    end
-  end
-  table.insert(rtn, line)
-  return table.concat(rtn)
 end
 
 function playSound(sound)

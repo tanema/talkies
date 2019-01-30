@@ -1,5 +1,6 @@
 package.path = package.path .. ";../?.lua"
 local Talkies = require("talkies")
+local Obey = require("other")
 
 function love.load()
   -- The FontStruction “Pixel UniCode” (https://fontstruct.com/fontstructions/show/908795)
@@ -17,16 +18,18 @@ function love.load()
   math.randomseed(os.time())
   rand()
 
-  -- Set up our image for image argument in Talkies.new config table
-  avatar = love.graphics.newImage("assets/Obey_Me.png")
+  -- Put some messages into the queue from anywhere in your codebase
+  Obey.sayHello()
 
   -- Put some messages into the talkies queue
-  Talkies.new("Möan.lua", "Hello World!", {image=avatar})
-  Talkies.new( "Tutorial",
-    {"Möan.lua is a simple to use messagebox library, it includes;", "Multiple choices,--UTF8 text,--Pauses, --Onstart/Oncomplete functions,--Complete customization,--Variable typing speeds umongst other things."},
-    {image=avatar, onstart=function() rand() end})
-  Talkies.new("Tutorial", "Typing sound is aligned with the text speed...",
-    {onstart=function() Talkies.setSpeed("slow") end, oncomplete=function() Talkies.setSpeed("fast") end})
+  Talkies.new(
+    "Tutorial",
+    "Typing sound is aligned with the text speed...",
+    {
+      onstart=function() Talkies.setSpeed("slow") end,
+      oncomplete=function() Talkies.setSpeed("fast") end,
+    }
+  )
   Talkies.new(
     "Tutorial",
     "Here's some options:",
@@ -36,7 +39,8 @@ function love.load()
         {"Blue", function() blue() end},
         {"Green", function() green() end}
       }
-    })
+    }
+  )
 end
 
 function love.update(dt)
@@ -52,12 +56,13 @@ function love.draw()
   Talkies.draw()
 end
 
-function love.keyreleased(key)
-  -- Pass keypresses to talkies
-  Talkies.keyreleased(key)
+function love.keypressed(key)
   if key == "c" then Talkies.clearMessages()
   elseif key == "m" then Talkies.new("Title", "Message one", "two", "and three...", {onstart=function() rand() end})
   elseif key == "escape" then love.event.quit()
+  elseif key == "space" then Talkies.onAction()
+  elseif key == "up" then Talkies.prevOption()
+  elseif key == "down" then Talkies.nextOption()
   end
 end
 
@@ -85,7 +90,16 @@ function green()
 end
 
 function moreMessages()
-  Talkies.new("Message queue", "Each message is added to a \"message queue\", i.e. they're presented in the order that they're called. This is part of the design of Möan.lua", {onstart=function() rand() end})
-  Talkies.new("UTF8 example", "アイ・ドーント・ノー・ジャパニーズ・ホープフリー・ジス・トランズレーター・ダズント・メス・ジス・アップ・トゥー・マッチ")
-  Talkies.new("Goodbye", "See ya around!", {oncomplete=function() rand() end})
+  Talkies.new(
+    "Message queue",
+    "Each message is added to a \"message queue\", i.e. they're presented in the order that they're called. This is part of the design of Möan.lua",
+    {
+      onstart=function() rand() end
+    }
+  )
+  Talkies.new(
+    "UTF8 example",
+    "アイ・ドーント・ノー・ジャパニーズ・ホープフリー・ジス・トランズレーター・ダズント・メス・ジス・アップ・トゥー・マッチ"
+  )
+  Obey.sayGoodbye()
 end
