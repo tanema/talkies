@@ -17,7 +17,6 @@ Talkies.new("Title", "Hello world!")
 - Break overflow to new message.
 - Add simple theming interface `setTheme`
 - Rich text, i.e. coloured/bold/italic text
-- better key interface
 
 ## How to
 Download the `talkies.lua` and place it in your project directory.
