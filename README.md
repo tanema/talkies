@@ -52,6 +52,7 @@ Create a new dialog of messages.
 - **title** : string
 - **messages**, a string or a table that contains strings
 - **config**, table that contains message configs, takes;
+  * `speed`, speed that the text is displayed. `slow`, `medium`, `fast` or number
   * `titleColor`, title text color. Default is `{255, 255, 255}`
   * `messageColor`, message text color. Default is `{255, 255, 255}`
   * `boxColor`, background color of the box. Default is `{ 0, 0, 0, 222 }`
