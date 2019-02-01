@@ -78,15 +78,15 @@ local Talkies = {
   _URL         = 'https://github.com/tanema/talkies',
   _DESCRIPTION = 'A simple messagebox system for LÖVE',
 
-  indicatorCharacter = ">",
-  optionCharacter    = "-",
+  indicatorCharacter = "▶",
+  optionCharacter    = "→",
   padding            = 10,
   typeSound          = nil,
   optionSwitchSound  = nil,
   font               = love.graphics.newFont(),
 
   indicatorTimer     = 0,
-  indicatorDelay     = 100,
+  indicatorDelay     = 200,
   showIndicator      = false,
   fontHeight         = love.graphics.newFont():getHeight(" "),
   defaultSpeed       = 0.01,
@@ -170,11 +170,13 @@ function Talkies.draw()
   love.graphics.push()
   love.graphics.setDefaultFilter("nearest", "nearest")
 
+  local windowWidth, windowHeight = love.graphics.getDimensions( )
+
   -- message box
-  local boxW = love.graphics.getWidth()-(2*Talkies.padding)
-  local boxH = (love.graphics.getHeight()/3)-(2*Talkies.padding)
+  local boxW = windowWidth-(2*Talkies.padding)
+  local boxH = (windowHeight/3)-(2*Talkies.padding)
   local boxX = Talkies.padding
-  local boxY = love.graphics.getHeight()-(boxH+Talkies.padding)
+  local boxY = windowHeight-(boxH+Talkies.padding)
 
   -- image
   local imgX, imgY, imgW, imgScale = boxX+Talkies.padding, boxY+Talkies.padding, 0, 0
@@ -186,18 +188,15 @@ function Talkies.draw()
   -- title box
   local titleBoxW = Talkies.font:getWidth(currentDialog.title)+(2*Talkies.padding)
   local titleBoxH = Talkies.fontHeight+Talkies.padding
-  local titleBoxX = boxX
   local titleBoxY = boxY-titleBoxH-(Talkies.padding/2)
-  local titleX = titleBoxX+Talkies.padding
-  local titleY = titleBoxY+2
-
+  local titleX, titleY = boxX + Talkies.padding, titleBoxY + 2
   local textX, textY = imgX + imgW + Talkies.padding, boxY + 1
 
   love.graphics.setFont(Talkies.font)
 
   -- Message title
   love.graphics.setColor(currentDialog.boxColor)
-  love.graphics.rectangle("fill", titleBoxX, titleBoxY, titleBoxW, titleBoxH)
+  love.graphics.rectangle("fill", boxX, titleBoxY, titleBoxW, titleBoxH)
   love.graphics.setColor(currentDialog.titleColor)
   love.graphics.print(currentDialog.title, titleX, titleY)
 
@@ -220,16 +219,16 @@ function Talkies.draw()
   -- Message options (when shown)
   if currentDialog:showOptions() and currentMessage.complete then
     local optionsY = textY+Talkies.font:getHeight(currentMessage.visible)-(Talkies.padding/1.6)
-    local optionsSpace = Talkies.fontHeight/1.5
+    local optionLeftPad = Talkies.font:getWidth(Talkies.optionCharacter.." ")
     for k, option in pairs(currentDialog.options) do
-      local prefix = k == currentDialog.optionIndex and Talkies.optionCharacter.." " or ""
-      love.graphics.print(prefix .. option[1], textX+Talkies.padding, optionsY+((k-1)*optionsSpace))
+      love.graphics.print(option[1], optionLeftPad+textX+Talkies.padding, optionsY+((k-1)*Talkies.fontHeight))
     end
+    love.graphics.print(Talkies.optionCharacter.." ", textX+Talkies.padding, optionsY+((currentDialog.optionIndex-1)*Talkies.fontHeight))
   end
 
   -- Next message/continue indicator
   if Talkies.showIndicator then
-    love.graphics.print(Talkies.indicatorCharacter, boxX+boxW-(2.5*Talkies.padding), boxY+boxH-(Talkies.padding/2)-Talkies.fontHeight)
+    love.graphics.print(Talkies.indicatorCharacter, boxX+boxW-(2.5*Talkies.padding), boxY+boxH-Talkies.fontHeight)
   end
 
   love.graphics.pop()
