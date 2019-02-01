@@ -7,13 +7,9 @@
 -- under the terms of the MIT license. See LICENSE for details.
 --
 local utf8 = require("utf8")
-local PATH = (...):match('^(.*[%./])[^%.%/]+$') or ''
 
 local Fifo = {}
-function Fifo.new ()
-  return setmetatable({first=0,last=-1},{__index=Fifo})
-end
-
+function Fifo.new () return setmetatable({first=1,last=0},{__index=Fifo}) end
 function Fifo:peek() return self[self.first] end
 function Fifo:len() return (self.last+1)-self.first end
 
@@ -31,46 +27,49 @@ function Fifo:pop()
 end
 
 local Typer = {}
-function Typer.new(max)
-  local typer = setmetatable({timerMax = max},{__index=Typer})
-  typer:reset()
-  return typer
+function Typer.new(msg, time)
+  return setmetatable({
+    msg = msg, complete = false, paused = false,
+    timer = time, max = time, position = 0, visible = "",
+  },{__index=Typer})
 end
 
-function Typer:reset()
-  self.complete, self.paused = false, false
-  self.timer = self.timerMax
-  self.position = 0
+function Typer:resume()
+  if not self.paused then return end
+  self.msg = self.msg:gsub("-+", " ", 1)
+  self.paused = false
 end
 
-function Typer:update(typeSound, msg, dt)
-  if self.complete then return msg end
+function Typer:finish()
+  if self.complete then return end
+  self.visible = self.msg:gsub("-+", " ")
+  self.complete = true
+end
 
+function Typer:update(dt)
+  local typed = false
+  if self.complete then return typed end
   if not self.paused then
     self.timer = self.timer - dt
     if self.timer <= 0 then
-      if string.sub(msg, self.position, self.position) ~= " " then playSound(typeSound) end
-      self.timer = self.timerMax
+      typed = string.sub(self.msg, self.position, self.position) ~= " "
       self.position = self.position + 1
+      self.timer = self.max
     end
   end
-
-  local part = string.sub(msg, 0, utf8.offset(msg, self.position) - 1)
-  self.complete = (part == msg)
-  self.paused = string.sub(msg, string.len(part)+1, string.len(part)+2) == "--"
-  return part
+  self.visible = string.sub(self.msg, 0, utf8.offset(self.msg, self.position) - 1)
+  self.complete = (self.visible == self.msg)
+  self.paused = string.sub(self.msg, string.len(self.visible)+1, string.len(self.visible)+2) == "--"
+  return typed
 end
 
-function Typer:setSpeed(speed)
-  if speed == "fast" then
-    self.timerMax = 0.01
-  elseif speed == "medium" then
-    self.timerMax = 0.04
-  elseif speed == "slow" then
-    self.timerMax = 0.08
+function parseSpeed(speed)
+  if speed == "fast" then return 0.01
+  elseif speed == "medium" then return 0.04
+  elseif speed == "slow" then return 0.08
   else
     assert(tonumber(speed), "setSpeed() - Expected number, got " .. tostring(speed))
-    self.timerMax = speed
+    return speed
   end
 end
 
@@ -91,8 +90,8 @@ local Talkies = {
   indicatorDelay     = 100,
   showIndicator      = false,
   fontHeight         = love.graphics.newFont():getHeight(" "),
+  defaultSpeed       = 0.01,
   dialogs            = Fifo.new(),
-  typer              = Typer.new(0.01),
 }
 
 function Talkies.new(title, messages, config)
@@ -102,7 +101,9 @@ function Talkies.new(title, messages, config)
   end
 
   msgFifo = Fifo.new()
-  for i=1, #messages do msgFifo:push(messages[i]) end
+  for i=1, #messages do
+    msgFifo:push(Typer.new(messages[i], parseSpeed(config.speed or Talkies.defaultSpeed)))
+  end
 
   -- Insert the Talkies.new into its own instance (table)
   Talkies.dialogs:push({
@@ -114,10 +115,10 @@ function Talkies.new(title, messages, config)
     image         = config.image,
     options       = config.options,
     onstart       = config.onstart or function() end,
+    onmessage     = config.onmessage or function() end,
     oncomplete    = config.oncomplete or function() end,
 
     optionIndex   = 1,
-    printedText   = "",
 
     showOptions = function(dialog) return dialog.messages:len() == 1 and type(dialog.options) == "table" end,
   })
@@ -130,9 +131,9 @@ end
 function Talkies.update(dt)
   local currentDialog = Talkies.dialogs:peek()
   if currentDialog == nil then return end
+  local currentMessage = currentDialog.messages:peek()
 
-  -- Tiny timer for the message indicator
-  if (Talkies.typer.paused or Talkies.typer.complete) then
+  if currentMessage.paused or currentMessage.complete then
     Talkies.indicatorTimer = Talkies.indicatorTimer + 1
     if Talkies.indicatorTimer > Talkies.indicatorDelay then
       Talkies.showIndicator = not Talkies.showIndicator
@@ -142,7 +143,7 @@ function Talkies.update(dt)
     Talkies.showIndicator = false
   end
 
-  currentDialog.printedText = Talkies.typer:update(Talkies.typeSound, currentDialog.messages:peek(), dt)
+  if currentMessage:update(dt) then playSound(Talkies.typeSound) end
 end
 
 function Talkies.advanceMsg()
@@ -151,22 +152,21 @@ function Talkies.advanceMsg()
   if currentDialog.messages:len()  == 1 then
     currentDialog.oncomplete()
     Talkies.dialogs:pop()
-    Talkies.typer:reset()
     if Talkies.dialogs:len() == 0 then
       Talkies.clearMessages()
-      return
     else
       Talkies.dialogs:peek().onstart()
     end
-  else
-    currentDialog.messages:pop()
-    Talkies.typer:reset()
   end
+  currentDialog.messages:pop()
+  currentDialog.onmessage(currentDialog.messages:len())
 end
 
 function Talkies.draw()
   local currentDialog = Talkies.dialogs:peek()
   if currentDialog == nil then return end
+
+  local currentMessage = currentDialog.messages:peek()
 
   love.graphics.push()
   love.graphics.setDefaultFilter("nearest", "nearest")
@@ -216,11 +216,11 @@ function Talkies.draw()
 
   -- Message text
   love.graphics.setColor(currentDialog.messageColor)
-  love.graphics.printf(currentDialog.printedText, textX, textY, boxW - imgW - (4 * Talkies.padding))
+  love.graphics.printf(currentMessage.visible, textX, textY, boxW - imgW - (4 * Talkies.padding))
 
   -- Message options (when shown)
-  if currentDialog:showOptions() and Talkies.typer.complete then
-    local optionsY = textY+Talkies.font:getHeight(currentDialog.printedText)-(Talkies.padding/1.6)
+  if currentDialog:showOptions() and currentMessage.complete then
+    local optionsY = textY+Talkies.font:getHeight(currentMessage.visible)-(Talkies.padding/1.6)
     local optionsSpace = Talkies.fontHeight/1.5
     for k, option in pairs(currentDialog.options) do
       local prefix = k == currentDialog.optionIndex and Talkies.optionCharacter.." " or ""
@@ -255,13 +255,10 @@ end
 function Talkies.onAction()
   local currentDialog = Talkies.dialogs:peek()
   if currentDialog == nil then return end
+  local currentMessage = currentDialog.messages:peek()
 
-  if Talkies.typer.paused then
-    currentDialog.messages[currentDialog.messages.first] = currentDialog.messages:peek():gsub("-+", " ", 1)
-    Talkies.typer.paused = false
-  elseif not Talkies.typer.complete then
-    currentDialog.messages[currentDialog.messages.first] = currentDialog.messages:peek():gsub("-+", " ")
-    Talkies.typer.complete = true
+  if currentMessage.paused then currentMessage:resume()
+  elseif not currentMessage.complete then currentMessage:finish()
   else
     if currentDialog:showOptions() then
       currentDialog.options[currentDialog.optionIndex][2]() -- Execute the selected function
@@ -272,7 +269,7 @@ function Talkies.onAction()
 end
 
 function Talkies.setSpeed(speed)
-  Talkies.typer:setSpeed(speed)
+  Talkies.defaultSpeed = parseSpeed(speed)
 end
 
 function Talkies.setFont(font)
@@ -288,61 +285,6 @@ end
 
 function Talkies.clearMessages()
   Talkies.dialogs = Fifo.new()
-  Talkies.typer:reset()
-end
-
--- External UTF8 functions
--- https://github.com/alexander-yakushev/awesompd/blob/master/utf8.lua
-function utf8.charbytes (s, i)
-  -- argument defaults
-  i = i or 1
-  local c = string.byte(s, i)
-  -- determine bytes needed for character, based on RFC 3629
-  if c > 0 and c <= 127 then -- UTF8-1
-    return 1
-  elseif c >= 194 and c <= 223 then -- UTF8-2
-    local c2 = string.byte(s, i + 1)
-    return 2
-  elseif c >= 224 and c <= 239 then -- UTF8-3
-    local c2 = s:byte(i + 1)
-    local c3 = s:byte(i + 2)
-    return 3
-  elseif c >= 240 and c <= 244 then -- UTF8-4
-    local c2 = s:byte(i + 1)
-    local c3 = s:byte(i + 2)
-    local c4 = s:byte(i + 3)
-    return 4
-  end
-end
-
-function utf8.sub (s, i, j)
-  if i == nil then return "" end
-  j = j or -1
-
-  local pos = 1
-  local bytes = string.len(s)
-  local len = 0
-
-  -- only set l if i or j is negative
-  local l = (i >= 0 and j >= 0) or utf8.len(s)
-  local startChar = (i >= 0) and i or l + i + 1
-  local endChar = (j >= 0) and j or l + j + 1
-
-  -- can't have start before end!
-  if startChar > endChar then return "" end
-
-  -- byte offsets to pass to string.sub
-  local startByte, endByte = 1, bytes
-  while pos <= bytes do
-    len = len + 1
-    if len == startChar then startByte = pos end
-    pos = pos + utf8.charbytes(s, pos)
-    if len == endChar then
-      endByte = pos - 1
-      break
-    end
-  end
-  return string.sub(s, startByte, endByte)
 end
 
 return Talkies

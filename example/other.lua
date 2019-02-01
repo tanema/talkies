@@ -10,11 +10,12 @@ function Obey.sayHello()
   Talkies.new( "Tutorial",
     {
       "Talkies is a simple to use messagebox library, it includes;",
-      "Multiple choices,--UTF8 text,--Pauses,--Onstart/Oncomplete functions,--Complete customization,--Variable typing speeds umongst other things."
+      "Multiple choices,--UTF8 text,--Pauses,--Onstart/OnMessage/Oncomplete functions,--Complete customization,--Variable typing speeds umongst other things."
     },
     {
       image=avatar,
       onstart=function() rand() end,
+      onmessage=function(left) print(left .. " messages left in the dialog") end,
     }
   )
 end

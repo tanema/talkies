@@ -25,10 +25,7 @@ function love.load()
   Talkies.new(
     "Tutorial",
     "Typing sound is aligned with the text speed...",
-    {
-      onstart=function() Talkies.setSpeed("slow") end,
-      oncomplete=function() Talkies.setSpeed("fast") end,
-    }
+    { speed = "slow" }
   )
   Talkies.new(
     "Tutorial",

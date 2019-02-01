@@ -25,7 +25,7 @@ Download the `talkies.lua` and place it in your project directory.
 local Talkies = require('talkies')
 
 function love.load()
-  Talkies.new("Title", {"Hello World!"})
+  Talkies.new("Title", "Hello World!")
 end
 
 function love.update(dt)
@@ -37,25 +37,31 @@ function love.draw()
 end
 
 function love.keypressed(key)
-  Talkies.keypressed(key)
+  if key == "space" then Talkies.onAction()
+  elseif key == "up" then Talkies.prevOption()
+  elseif key == "down" then Talkies.nextOption()
+  end
 end
 ```
 
 ## API
 
 ### Talkies.new(title, messages, config)
+Create a new dialog of messages.
+
 - **title** : string
-- **messages**, a string or a table, contains strings
-- **config**, table, contains message configs, takes;
+- **messages**, a string or a table that contains strings
+- **config**, table that contains message configs, takes;
   * `titleColor`, title text color. Default is `{255, 255, 255}`
   * `messageColor`, message text color. Default is `{255, 255, 255}`
   * `boxColor`, background color of the box. Default is `{ 0, 0, 0, 222 }`
   * `image`, message icon image e.g. `love.graphics.newImage("img.png")`
-  * `onstart`, function to be executed on message start
-  * `oncomplete`, function executed on message end
+  * `onstart()`, function to be executed on message start
+  * `onmessage(messages_left)`, function called after every message that is acknowledged
+  * `oncomplete()`, function executed on message end
   * `options`, table, contains multiple-choice options
-    - [1], string describing option
-    - [2], function to be exected if option is selected
+    - [1], string, a label for the option
+    - [2], function to be called if option is selected
 
 On the final message in the array of messages, the options will be displayed.
 Upon pressing return, the function relative to the option will be called. There
@@ -65,7 +71,6 @@ on your UI configuration.
 #### Pauses
 A double dash `--` causes them message to stop typing, and will only continue when
 `Talkies.selectButton` is pressed, each `--` will be replaced with a space.
-
 
 ### Talkies.update(dt)
 Update will update the UI with the dt and animate the typing
