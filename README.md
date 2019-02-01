@@ -106,5 +106,4 @@ at any time.
 * `Talkies.indicatorCharacter` - Character on the bottom right indicating more content (string), default: ">"
 * `Talkies.optionCharacter` - Character before option to indicate selection (string), default: "-"
 * `Talkies.font` - Message box font (e.g. `Talkies.font = love.graphics.newFont("Talkies/main.ttf", 32)`)
-* `Talkies.boxHeight` - height of the dialog box. Default is `118`
 * `Talkies.padding` - padding on the inside of the box, default is `10`

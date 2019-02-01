@@ -80,7 +80,6 @@ local Talkies = {
 
   indicatorCharacter = ">",
   optionCharacter    = "-",
-  boxHeight          = 118,
   padding            = 10,
   typeSound          = nil,
   optionSwitchSound  = nil,
@@ -172,15 +171,15 @@ function Talkies.draw()
   love.graphics.setDefaultFilter("nearest", "nearest")
 
   -- message box
-  local boxX = Talkies.padding
-  local boxY = love.graphics.getHeight()-(Talkies.boxHeight+Talkies.padding)
   local boxW = love.graphics.getWidth()-(2*Talkies.padding)
-  local boxH = Talkies.boxHeight
+  local boxH = (love.graphics.getHeight()/3)-(2*Talkies.padding)
+  local boxX = Talkies.padding
+  local boxY = love.graphics.getHeight()-(boxH+Talkies.padding)
 
   -- image
   local imgX, imgY, imgW, imgScale = boxX+Talkies.padding, boxY+Talkies.padding, 0, 0
   if currentDialog.image ~= nil then
-    imgScale = (Talkies.boxHeight - (Talkies.padding * 2)) / currentDialog.image:getHeight()
+    imgScale = (boxH - (Talkies.padding * 2)) / currentDialog.image:getHeight()
     imgW = currentDialog.image:getWidth() * imgScale
   end
 
