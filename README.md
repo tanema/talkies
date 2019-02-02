@@ -12,10 +12,10 @@ Talkies.new("Title", "Hello world!")
 - UTF-8 support
 - Message box icons
 - Autowrapped text
+- General theming and per-message theming
 
 ### To do:
 - Break overflow to new message.
-- Add simple theming interface `setTheme`
 - Rich text, i.e. coloured/bold/italic text
 
 ## How to
@@ -52,10 +52,6 @@ Create a new dialog of messages.
 - **title** : string
 - **messages**, a string or a table that contains strings
 - **config**, table that contains message configs, takes;
-  * `speed`, speed that the text is displayed. `slow`, `medium`, `fast` or number
-  * `titleColor`, title text color. Default is `{255, 255, 255}`
-  * `messageColor`, message text color. Default is `{255, 255, 255}`
-  * `boxColor`, background color of the box. Default is `{ 0, 0, 0, 222 }`
   * `image`, message icon image e.g. `love.graphics.newImage("img.png")`
   * `onstart()`, function to be executed on message start
   * `onmessage(messages_left)`, function called after every message that is acknowledged
@@ -69,6 +65,9 @@ Upon pressing return, the function relative to the option will be called. There
 can be "infinite" options, however the options will probably overflow depending
 on your UI configuration.
 
+To change the appearance of eah message please pass in the theming values described
+below
+
 #### Pauses
 A double dash `--` causes them message to stop typing, and will only continue when
 `Talkies.selectButton` is pressed, each `--` will be replaced with a space.
@@ -78,10 +77,6 @@ Update will update the UI with the dt and animate the typing
 
 ### Talkies.draw()
 Draw the UI of the dialog
-
-### Talkies.setSpeed(speed)
-Controls the speed at which letters are typed. Speed can be: ["fast", "medium", "slow"]
-or a number. Default is `0.01`
 
 ### Talkies.clearMessages()
 Removes all messages from the queue and closes the messagebox. This will quit all dialogs.
@@ -100,10 +95,21 @@ it will show the next message. If the message is paused, it will resume. If the
 message has options shown, it will select the option. This can safely be called
 at any time.
 
-## Configuration
-* `Talkies.typeSound` - Typing sound, should be a very short clip (e.g. `Talkies.typeSound = love.audio.newSource("typeSound.wav", "static")`)
-* `Talkies.optionSound` - Sound to be played when a option is selected
-* `Talkies.indicatorCharacter` - Character on the bottom right indicating more content (string), default: ">"
-* `Talkies.optionCharacter` - Character before option to indicate selection (string), default: "-"
-* `Talkies.font` - Message box font (e.g. `Talkies.font = love.graphics.newFont("Talkies/main.ttf", 32)`)
-* `Talkies.padding` - padding on the inside of the box, default is `10`
+## Theming your message box
+All of the following options can be set on the `Talkies.[attribute]` settings and
+passed in as config to each new dialog created. For instance to set a default text
+speed for all message boxes you would call `Talkies.textSpeed = "fast"` but then if
+you wanted a single message to go slower you would create it like this.
+`Talkies.new("Old man", "I talk very slow", {textSpeed = "slow"})`
+
+The following are all of the message theme options:
+* `textSpeed`, speed that the text is displayed. `slow`, `medium`, `fast` or number, default to fast.
+* `typeSound` - Typing sound, should be a very short clip (e.g. `Talkies.typeSound = love.audio.newSource("typeSound.wav", "static")`)
+* `optionSwitchSound` - Sound to be played when a option is selected
+* `indicatorCharacter` - Character on the bottom right indicating more content (string), default: ">"
+* `optionCharacter` - Character before option to indicate selection (string), default: "-"
+* `font` - Message box font (e.g. `Talkies.font = love.graphics.newFont("Talkies/main.ttf", 32)`)
+* `padding` - padding on the inside of the box, default is `10`
+* `titleColor`, title text color.
+* `messageColor`, message text color. Default is `{1, 1, 1}`
+* `backgroundColor`, background color of the box. Default is `{0, 0, 0, 0.8}`

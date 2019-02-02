@@ -26,7 +26,8 @@ function Obey.sayGoodbye()
     "See ya around!",
     {
       image=avatar,
-      oncomplete=function() rand() end
+      oncomplete=function() rand() end,
+      titleColor = {1, 0, 0}
     }
   )
 end

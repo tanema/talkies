@@ -27,10 +27,11 @@ function Fifo:pop()
 end
 
 local Typer = {}
-function Typer.new(msg, time)
+function Typer.new(msg, speed)
+  local timeToType = parseSpeed(speed)
   return setmetatable({
     msg = msg, complete = false, paused = false,
-    timer = time, max = time, position = 0, visible = "",
+    timer = timeToType, max = timeToType, position = 0, visible = "",
   },{__index=Typer})
 end
 
@@ -78,18 +79,21 @@ local Talkies = {
   _URL         = 'https://github.com/tanema/talkies',
   _DESCRIPTION = 'A simple messagebox system for LÖVE',
 
-  indicatorCharacter = "▶",
-  optionCharacter    = "→",
+  -- Theme
+  indicatorCharacter = ">",
+  optionCharacter    = "-",
   padding            = 10,
   typeSound          = nil,
   optionSwitchSound  = nil,
+  titleColor         = {1, 1, 1},
+  messageColor       = {1, 1, 1},
+  backgroundColor    = {0, 0, 0, 0.8},
+  textSpeed          = 0.01,
   font               = love.graphics.newFont(),
 
   indicatorTimer     = 0,
   indicatorDelay     = 200,
   showIndicator      = false,
-  fontHeight         = love.graphics.newFont():getHeight(" "),
-  defaultSpeed       = 0.01,
   dialogs            = Fifo.new(),
 }
 
@@ -101,21 +105,32 @@ function Talkies.new(title, messages, config)
 
   msgFifo = Fifo.new()
   for i=1, #messages do
-    msgFifo:push(Typer.new(messages[i], parseSpeed(config.speed or Talkies.defaultSpeed)))
+    msgFifo:push(Typer.new(messages[i], config.textSpeed or Talkies.textSpeed))
   end
+
+  local font = config.font or Talkies.font
 
   -- Insert the Talkies.new into its own instance (table)
   Talkies.dialogs:push({
     title         = title,
     messages      = msgFifo,
-    titleColor    = config.titleColor or {255, 255, 255},
-    messageColor  = config.messageColor or {255, 255, 255},
-    boxColor      = config.boxColor or { 0, 0, 0, 222 },
     image         = config.image,
     options       = config.options,
     onstart       = config.onstart or function() end,
     onmessage     = config.onmessage or function() end,
     oncomplete    = config.oncomplete or function() end,
+
+    -- theme
+    indicatorCharacter = config.indicatorCharacter or Talkies.indicatorCharacter,
+    optionCharacter    = config.optionCharacter or Talkies.optionCharacter,
+    padding            = config.padding or Talkies.padding,
+    typeSound          = config.typeSound or Talkies.typeSound,
+    optionSwitchSound  = config.optionSwitchSound or Talkies.optionSwitchSound,
+    titleColor         = config.titleColor or Talkies.titleColor,
+    messageColor       = config.messageColor or Talkies.messageColor,
+    backgroundColor    = config.backgroundColor or Talkies.backgroundColor,
+    font               = font,
+    fontHeight         = font:getHeight(" "),
 
     optionIndex   = 1,
 
@@ -142,7 +157,7 @@ function Talkies.update(dt)
     Talkies.showIndicator = false
   end
 
-  if currentMessage:update(dt) then playSound(Talkies.typeSound) end
+  if currentMessage:update(dt) then playSound(currentDialog.typeSound) end
 end
 
 function Talkies.advanceMsg()
@@ -173,35 +188,35 @@ function Talkies.draw()
   local windowWidth, windowHeight = love.graphics.getDimensions( )
 
   -- message box
-  local boxW = windowWidth-(2*Talkies.padding)
-  local boxH = (windowHeight/3)-(2*Talkies.padding)
-  local boxX = Talkies.padding
-  local boxY = windowHeight-(boxH+Talkies.padding)
+  local boxW = windowWidth-(2*currentDialog.padding)
+  local boxH = (windowHeight/3)-(2*currentDialog.padding)
+  local boxX = currentDialog.padding
+  local boxY = windowHeight-(boxH+currentDialog.padding)
 
   -- image
-  local imgX, imgY, imgW, imgScale = boxX+Talkies.padding, boxY+Talkies.padding, 0, 0
+  local imgX, imgY, imgW, imgScale = boxX+currentDialog.padding, boxY+currentDialog.padding, 0, 0
   if currentDialog.image ~= nil then
-    imgScale = (boxH - (Talkies.padding * 2)) / currentDialog.image:getHeight()
+    imgScale = (boxH - (currentDialog.padding * 2)) / currentDialog.image:getHeight()
     imgW = currentDialog.image:getWidth() * imgScale
   end
 
   -- title box
-  local titleBoxW = Talkies.font:getWidth(currentDialog.title)+(2*Talkies.padding)
-  local titleBoxH = Talkies.fontHeight+Talkies.padding
-  local titleBoxY = boxY-titleBoxH-(Talkies.padding/2)
-  local titleX, titleY = boxX + Talkies.padding, titleBoxY + 2
-  local textX, textY = imgX + imgW + Talkies.padding, boxY + 1
+  local titleBoxW = currentDialog.font:getWidth(currentDialog.title)+(2*currentDialog.padding)
+  local titleBoxH = currentDialog.fontHeight+currentDialog.padding
+  local titleBoxY = boxY-titleBoxH-(currentDialog.padding/2)
+  local titleX, titleY = boxX + currentDialog.padding, titleBoxY + 2
+  local textX, textY = imgX + imgW + currentDialog.padding, boxY + 1
 
-  love.graphics.setFont(Talkies.font)
+  love.graphics.setFont(currentDialog.font)
 
   -- Message title
-  love.graphics.setColor(currentDialog.boxColor)
+  love.graphics.setColor(currentDialog.backgroundColor)
   love.graphics.rectangle("fill", boxX, titleBoxY, titleBoxW, titleBoxH)
   love.graphics.setColor(currentDialog.titleColor)
   love.graphics.print(currentDialog.title, titleX, titleY)
 
   -- Main message box
-  love.graphics.setColor(currentDialog.boxColor)
+  love.graphics.setColor(currentDialog.backgroundColor)
   love.graphics.rectangle("fill", boxX, boxY, boxW, boxH)
 
   -- Message avatar
@@ -214,21 +229,24 @@ function Talkies.draw()
 
   -- Message text
   love.graphics.setColor(currentDialog.messageColor)
-  love.graphics.printf(currentMessage.visible, textX, textY, boxW - imgW - (4 * Talkies.padding))
+  love.graphics.printf(currentMessage.visible, textX, textY, boxW - imgW - (4 * currentDialog.padding))
 
   -- Message options (when shown)
   if currentDialog:showOptions() and currentMessage.complete then
-    local optionsY = textY+Talkies.font:getHeight(currentMessage.visible)-(Talkies.padding/1.6)
-    local optionLeftPad = Talkies.font:getWidth(Talkies.optionCharacter.." ")
+    local optionsY = textY+currentDialog.font:getHeight(currentMessage.visible)-(currentDialog.padding/1.6)
+    local optionLeftPad = currentDialog.font:getWidth(currentDialog.optionCharacter.." ")
     for k, option in pairs(currentDialog.options) do
-      love.graphics.print(option[1], optionLeftPad+textX+Talkies.padding, optionsY+((k-1)*Talkies.fontHeight))
+      love.graphics.print(option[1], optionLeftPad+textX+currentDialog.padding, optionsY+((k-1)*currentDialog.fontHeight))
     end
-    love.graphics.print(Talkies.optionCharacter.." ", textX+Talkies.padding, optionsY+((currentDialog.optionIndex-1)*Talkies.fontHeight))
+    love.graphics.print(
+      currentDialog.optionCharacter.." ",
+      textX+currentDialog.padding,
+      optionsY+((currentDialog.optionIndex-1)*currentDialog.fontHeight))
   end
 
   -- Next message/continue indicator
   if Talkies.showIndicator then
-    love.graphics.print(Talkies.indicatorCharacter, boxX+boxW-(2.5*Talkies.padding), boxY+boxH-Talkies.fontHeight)
+    love.graphics.print(currentDialog.indicatorCharacter, boxX+boxW-(2.5*currentDialog.padding), boxY+boxH-currentDialog.fontHeight)
   end
 
   love.graphics.pop()
@@ -239,7 +257,7 @@ function Talkies.prevOption()
   if currentDialog == nil or not currentDialog:showOptions() then return end
   currentDialog.optionIndex = currentDialog.optionIndex - 1
   if currentDialog.optionIndex < 1 then currentDialog.optionIndex = #currentDialog.options end
-  playSound(Talkies.optionSwitchSound)
+  playSound(currentDialog.optionSwitchSound)
 end
 
 function Talkies.nextOption()
@@ -247,7 +265,7 @@ function Talkies.nextOption()
   if currentDialog == nil or not currentDialog:showOptions() then return end
   currentDialog.optionIndex = currentDialog.optionIndex + 1
   if currentDialog.optionIndex > #currentDialog.options then currentDialog.optionIndex = 1 end
-  playSound(Talkies.optionSwitchSound)
+  playSound(currentDialog.optionSwitchSound)
 end
 
 function Talkies.onAction()
@@ -260,19 +278,10 @@ function Talkies.onAction()
   else
     if currentDialog:showOptions() then
       currentDialog.options[currentDialog.optionIndex][2]() -- Execute the selected function
-      playSound(Talkies.optionSwitchSound)
+      playSound(currentDialog.optionSwitchSound)
     end
     Talkies.advanceMsg()
   end
-end
-
-function Talkies.setSpeed(speed)
-  Talkies.defaultSpeed = parseSpeed(speed)
-end
-
-function Talkies.setFont(font)
-  Talkies.font = font
-  Talkies.fontHeight = Talkies.font:getHeight(" ")
 end
 
 function playSound(sound)
