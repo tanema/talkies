@@ -15,8 +15,9 @@ Talkies.new("Title", "Hello world!")
 - General theming and per-message theming
 
 ### To do:
-- Break overflow to new message.
-- Rich text, i.e. coloured/bold/italic text
+Break overflow to new message. Currently if your message is too large for the display
+of the message box, it will overflow the box and will not be displayed. Be careful
+and make sure all your messages work on all of the resolutions you use.
 
 ## How to
 Download the `talkies.lua` and place it in your project directory.
