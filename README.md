@@ -65,7 +65,7 @@ Upon pressing return, the function relative to the option will be called. There
 can be "infinite" options, however the options will probably overflow depending
 on your UI configuration.
 
-To change the appearance of eah message please pass in the theming values described
+To change the appearance of each message please pass in the theming values described
 below
 
 #### Pauses
