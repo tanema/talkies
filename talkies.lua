@@ -83,13 +83,16 @@ local Talkies = {
   indicatorCharacter = ">",
   optionCharacter    = "-",
   padding            = 10,
-  typeSound          = nil,
+  talkSound          = nil,
   optionSwitchSound  = nil,
   titleColor         = {1, 1, 1},
   messageColor       = {1, 1, 1},
   backgroundColor    = {0, 0, 0, 0.8},
   textSpeed          = 0.01,
   font               = love.graphics.newFont(),
+
+  typedNotTalked     = true,
+  pitchValues        = {0.7, 0.8, 1.0, 1.2, 1.3},
 
   indicatorTimer     = 0,
   indicatorDelay     = 200,
@@ -124,13 +127,15 @@ function Talkies.new(title, messages, config)
     indicatorCharacter = config.indicatorCharacter or Talkies.indicatorCharacter,
     optionCharacter    = config.optionCharacter or Talkies.optionCharacter,
     padding            = config.padding or Talkies.padding,
-    typeSound          = config.typeSound or Talkies.typeSound,
+    talkSound          = config.talkSound or Talkies.talkSound,
     optionSwitchSound  = config.optionSwitchSound or Talkies.optionSwitchSound,
     titleColor         = config.titleColor or Talkies.titleColor,
     messageColor       = config.messageColor or Talkies.messageColor,
     backgroundColor    = config.backgroundColor or Talkies.backgroundColor,
     font               = font,
     fontHeight         = font:getHeight(" "),
+    typedNotTalked     = config.typedNotTalked == nil and Talkies.typedNotTalked or config.typedNotTalked,
+    pitchValues        = config.pitchValues or Talkies.pitchValues,
 
     optionIndex   = 1,
 
@@ -157,7 +162,14 @@ function Talkies.update(dt)
     Talkies.showIndicator = false
   end
 
-  if currentMessage:update(dt) then playSound(currentDialog.typeSound) end
+  if currentMessage:update(dt) then
+    if currentDialog.typedNotTalked then
+      playSound(currentDialog.talkSound)
+    elseif not currentDialog.talkSound:isPlaying() then
+      local pitch = currentDialog.pitchValues[math.random(#currentDialog.pitchValues)]
+      playSound(currentDialog.talkSound, pitch)
+    end
+  end
 end
 
 function Talkies.advanceMsg()
@@ -284,8 +296,9 @@ function Talkies.onAction()
   end
 end
 
-function playSound(sound)
+function playSound(sound, pitch)
   if type(sound) == "userdata" then
+    sound:setPitch(pitch or 1)
     sound:play()
   end
 end

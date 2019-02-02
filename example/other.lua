@@ -2,11 +2,18 @@ local Talkies = require("talkies")
 
 local Obey = {}
 local avatar;
+local blop
 
 function Obey.sayHello()
+  blop = love.audio.newSource("assets/sfx/talk.wav", "static")
   avatar = love.graphics.newImage("assets/Obey_Me.png")
 
-  Talkies.new("Möan.lua", "Hello World!", {image=avatar})
+  Talkies.new("Möan.lua", "Hello World!", {
+    image=avatar,
+    talkSound=blop,
+    typedNotTalked=false,
+    textSpeed="slow"
+  })
   Talkies.new( "Tutorial",
     {
       "Talkies is a simple to use messagebox library, it includes;",
@@ -14,6 +21,8 @@ function Obey.sayHello()
     },
     {
       image=avatar,
+      talkSound=blop,
+      typedNotTalked=false,
       onstart=function() rand() end,
       onmessage=function(left) print(left .. " messages left in the dialog") end,
     }
@@ -26,6 +35,8 @@ function Obey.sayGoodbye()
     "See ya around!",
     {
       image=avatar,
+      talkSound=blop,
+      typedNotTalked=false,
       oncomplete=function() rand() end,
       titleColor = {1, 0, 0}
     }

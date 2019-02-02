@@ -2,6 +2,7 @@ package.path = package.path .. ";../?.lua"
 local Talkies = require("talkies")
 local Obey = require("other")
 
+
 function love.load()
   -- The FontStruction “Pixel UniCode” (https://fontstruct.com/fontstructions/show/908795)
   -- by “ivancr72” is licensed under a Creative Commons Attribution license
@@ -10,7 +11,7 @@ function love.load()
   Talkies.font:setFallbacks(love.graphics.newFont("assets/fonts/JPfallback.ttf", 32)) -- Add font fallbacks for Japanese characters
 
   -- Audio from bfxr (https://www.bfxr.net/)
-  Talkies.typeSound = love.audio.newSource("assets/sfx/typeSound.wav", "static")
+  Talkies.talkSound = love.audio.newSource("assets/sfx/typeSound.wav", "static")
   Talkies.optionOnSelectSound = love.audio.newSource("assets/sfx/optionSelect.wav", "static")
   Talkies.optionSwitchSound = love.audio.newSource("assets/sfx/optionSwitch.wav", "static")
 

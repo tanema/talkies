@@ -104,7 +104,7 @@ you wanted a single message to go slower you would create it like this.
 
 The following are all of the message theme options:
 * `textSpeed`, speed that the text is displayed. `slow`, `medium`, `fast` or number, default to fast.
-* `typeSound` - Typing sound, should be a very short clip (e.g. `Talkies.typeSound = love.audio.newSource("typeSound.wav", "static")`)
+* `talkSound` - Sound to be played when the character speaks, should be a very short clip (e.g. `Talkies.typeSound = love.audio.newSource("typeSound.wav", "static")`)
 * `optionSwitchSound` - Sound to be played when a option is selected
 * `indicatorCharacter` - Character on the bottom right indicating more content (string), default: ">"
 * `optionCharacter` - Character before option to indicate selection (string), default: "-"
@@ -113,3 +113,10 @@ The following are all of the message theme options:
 * `titleColor`, title text color.
 * `messageColor`, message text color. Default is `{1, 1, 1}`
 * `backgroundColor`, background color of the box. Default is `{0, 0, 0, 0.8}`
+* `typedNotTalked`, when making a sound while talking, if this is set to true the
+  noise will be made for every character. If set to false the noise will be looped,
+  and the pitch will be oscillated randomly between the pitchValues setting. default to true
+* `pitchValues`, If `typedNotTalked` is set to false then this table value will be
+  used to choose values of pitch while talking. If you want no pitch change set it to
+  {1}, Default is {0.7, 0.8, 1.0, 1.2, 1.3}
+
