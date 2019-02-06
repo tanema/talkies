@@ -22,12 +22,12 @@ function love.load()
   Obey.sayHello()
 
   -- Put some messages into the talkies queue
-  Talkies.new(
+  Talkies.say(
     "Tutorial",
     "Typing sound is aligned with the text speed...",
     { textSpeed = "slow" }
   )
-  Talkies.new(
+  Talkies.say(
     "Tutorial",
     "Here's some options:",
     {
@@ -55,7 +55,7 @@ end
 
 function love.keypressed(key)
   if key == "c" then Talkies.clearMessages()
-  elseif key == "m" then Talkies.new("Title", "Message one", "two", "and three...", {onstart=function() rand() end})
+  elseif key == "m" then Talkies.say("Title", "Message one", "two", "and three...", {onstart=function() rand() end})
   elseif key == "escape" then love.event.quit()
   elseif key == "space" then Talkies.onAction()
   elseif key == "up" then Talkies.prevOption()
@@ -70,31 +70,31 @@ end
 
 function red()
   love.graphics.setBackgroundColor(1,0,0)
-  Talkies.new("Hey!", "You picked Red!")
+  Talkies.say("Hey!", "You picked Red!")
   moreMessages()
 end
 
 function blue()
   love.graphics.setBackgroundColor(0,0,1)
-  Talkies.new("Hey!", "You picked Blue!")
+  Talkies.say("Hey!", "You picked Blue!")
   moreMessages()
 end
 
 function green()
   love.graphics.setBackgroundColor(0,1,0)
-  Talkies.new("Hey!", "You picked Green!")
+  Talkies.say("Hey!", "You picked Green!")
   moreMessages()
 end
 
 function moreMessages()
-  Talkies.new(
+  Talkies.say(
     "Message queue",
     "Each message is added to a \"message queue\", i.e. they're presented in the order that they're called. This is part of the design of Möan.lua",
     {
       onstart=function() rand() end
     }
   )
-  Talkies.new(
+  Talkies.say(
     "UTF8 example",
     "アイ・ドーント・ノー・ジャパニーズ・ホープフリー・ジス・トランズレーター・ダズント・メス・ジス・アップ・トゥー・マッチ"
   )

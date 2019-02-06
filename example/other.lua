@@ -8,13 +8,13 @@ function Obey.sayHello()
   blop = love.audio.newSource("assets/sfx/talk.wav", "static")
   avatar = love.graphics.newImage("assets/Obey_Me.png")
 
-  Talkies.new("Möan.lua", "Hello World!", {
+  Talkies.say("Talkies.lua", "Hello World!", {
     image=avatar,
     talkSound=blop,
     typedNotTalked=false,
     textSpeed="slow"
   })
-  Talkies.new( "Tutorial",
+  Talkies.say( "Tutorial",
     {
       "Talkies is a simple to use messagebox library, it includes;",
       "Multiple choices,--UTF8 text,--Pauses,--Onstart/OnMessage/Oncomplete functions,--Complete customization,--Variable typing speeds umongst other things."
@@ -23,14 +23,22 @@ function Obey.sayHello()
       image=avatar,
       talkSound=blop,
       typedNotTalked=false,
-      onstart=function() rand() end,
-      onmessage=function(left) print(left .. " messages left in the dialog") end,
+      onstart = function(dialog)
+        print("are we showing:", dialog:isShown())
+        rand()
+      end,
+      onmessage = function(dialog, left)
+        print(left .. " messages left in the dialog, is showing:", dialog:isShown())
+      end,
+      oncomplete = function(dialog)
+        print("are we still showing:", dialog:isShown())
+      end
     }
   )
 end
 
 function Obey.sayGoodbye()
-  Talkies.new(
+  Talkies.say(
     "Goodbye",
     "See ya around!",
     {

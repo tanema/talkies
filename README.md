@@ -48,15 +48,15 @@ end
 ## API
 
 ### Talkies.new(title, messages, config)
-Create a new dialog of messages.
+Create a new dialog of messages and returns that dialog.
 
 - **title** : string
 - **messages**, a string or a table that contains strings
 - **config**, table that contains message configs, takes;
   * `image`, message icon image e.g. `love.graphics.newImage("img.png")`
-  * `onstart()`, function to be executed on message start
-  * `onmessage(messages_left)`, function called after every message that is acknowledged
-  * `oncomplete()`, function executed on message end
+  * `onstart(dialog)`, function to be executed on message start
+  * `onmessage(dialog, messages_left)`, function called after every message that is acknowledged
+  * `oncomplete(dialog)`, function executed on message end
   * `options`, table, contains multiple-choice options
     - [1], string, a label for the option
     - [2], function to be called if option is selected
@@ -96,6 +96,10 @@ it will show the next message. If the message is paused, it will resume. If the
 message has options shown, it will select the option. This can safely be called
 at any time.
 
+### Talkies.isOpen()
+isOpen will return true if Talkies is currently drawing dialogs. It will return
+false otherwise.
+
 ## Theming your message box
 All of the following options can be set on the `Talkies.[attribute]` settings and
 passed in as config to each new dialog created. For instance to set a default text
@@ -121,3 +125,14 @@ The following are all of the message theme options:
   used to choose values of pitch while talking. If you want no pitch change set it to
   {1}, Default is {0.7, 0.8, 1.0, 1.2, 1.3}
 
+### dialog:isShown()
+isShown will return true if the dialog is currently the dialog on the screen and
+false otherwise
+
+example:
+```
+local firstdialog = Talkies.say("title", "message")
+local seconddialog = Talkies.say("title", "message")
+firstdialog:isShown() //true
+seconddialog:isShown() //false, will return true when Talkies.onAction() is called
+```

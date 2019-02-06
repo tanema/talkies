@@ -100,7 +100,7 @@ local Talkies = {
   dialogs            = Fifo.new(),
 }
 
-function Talkies.new(title, messages, config)
+function Talkies.say(title, messages, config)
   config = config or {}
   if type(messages) ~= "table" then
     messages = { messages }
@@ -114,14 +114,14 @@ function Talkies.new(title, messages, config)
   local font = config.font or Talkies.font
 
   -- Insert the Talkies.new into its own instance (table)
-  Talkies.dialogs:push({
+  local newDialog = {
     title         = title,
     messages      = msgFifo,
     image         = config.image,
     options       = config.options,
-    onstart       = config.onstart or function() end,
-    onmessage     = config.onmessage or function() end,
-    oncomplete    = config.oncomplete or function() end,
+    onstart       = config.onstart or function(dialog) end,
+    onmessage     = config.onmessage or function(dialog, left) end,
+    oncomplete    = config.oncomplete or function(dialog) end,
 
     -- theme
     indicatorCharacter = config.indicatorCharacter or Talkies.indicatorCharacter,
@@ -140,11 +140,15 @@ function Talkies.new(title, messages, config)
     optionIndex   = 1,
 
     showOptions = function(dialog) return dialog.messages:len() == 1 and type(dialog.options) == "table" end,
-  })
+    isShown     = function(dialog) return Talkies.dialogs:peek() == dialog end
+  }
 
+  Talkies.dialogs:push(newDialog)
   if Talkies.dialogs:len() == 1 then
-    Talkies.dialogs:peek().onstart()
+    Talkies.dialogs:peek():onstart()
   end
+
+  return newDialog
 end
 
 function Talkies.update(dt)
@@ -175,17 +179,21 @@ end
 function Talkies.advanceMsg()
   local currentDialog = Talkies.dialogs:peek()
   if currentDialog == nil then return end
-  if currentDialog.messages:len()  == 1 then
-    currentDialog.oncomplete()
+  currentDialog:onmessage(currentDialog.messages:len() - 1)
+  if currentDialog.messages:len() == 1 then
     Talkies.dialogs:pop()
+    currentDialog:oncomplete()
     if Talkies.dialogs:len() == 0 then
       Talkies.clearMessages()
     else
-      Talkies.dialogs:peek().onstart()
+      Talkies.dialogs:peek():onstart()
     end
   end
   currentDialog.messages:pop()
-  currentDialog.onmessage(currentDialog.messages:len())
+end
+
+function Talkies.isOpen()
+  return Talkies.dialogs:peek() ~= nil
 end
 
 function Talkies.draw()
