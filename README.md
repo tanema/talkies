@@ -2,7 +2,7 @@
 A simple messagebox system for LÖVE, a rewrite of [Moan.lua](https://github.com/tanema/moan.lua)
 
 ```lua
-Talkies.new("Title", "Hello world!")
+Talkies.say("Title", "Hello world!")
 ```
 
 ## Features
