@@ -205,7 +205,15 @@ function Talkies.draw()
   love.graphics.push()
   love.graphics.setDefaultFilter("nearest", "nearest")
 
-  local windowWidth, windowHeight = love.graphics.getDimensions( )
+  local function getDimensions()
+    local canvas = love.graphics.getCanvas()
+    if canvas then
+      return canvas:getDimensions()
+    end
+    return love.graphics.getDimensions()
+  end
+
+  local windowWidth, windowHeight = love.graphics.getDimensions()
 
   -- message box
   local boxW = windowWidth-(2*currentDialog.padding)
