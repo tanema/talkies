@@ -26,7 +26,7 @@ Download the `talkies.lua` and place it in your project directory.
 local Talkies = require('talkies')
 
 function love.load()
-  Talkies.new("Title", "Hello World!")
+  Talkies.say("Title", "Hello World!")
 end
 
 function love.update(dt)
@@ -47,7 +47,7 @@ end
 
 ## API
 
-### Talkies.new(title, messages, config)
+### Talkies.say(title, messages, config)
 Create a new dialog of messages and returns that dialog.
 
 - **title** : string
@@ -105,7 +105,7 @@ All of the following options can be set on the `Talkies.[attribute]` settings an
 passed in as config to each new dialog created. For instance to set a default text
 speed for all message boxes you would call `Talkies.textSpeed = "fast"` but then if
 you wanted a single message to go slower you would create it like this.
-`Talkies.new("Old man", "I talk very slow", {textSpeed = "slow"})`
+`Talkies.say("Old man", "I talk very slow", {textSpeed = "slow"})`
 
 The following are all of the message theme options:
 * `textSpeed`, speed that the text is displayed. `slow`, `medium`, `fast` or number, default to fast.
