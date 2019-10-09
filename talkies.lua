@@ -8,6 +8,23 @@
 --
 local utf8 = require("utf8")
 
+local function playSound(sound, pitch)
+  if type(sound) == "userdata" then
+    sound:setPitch(pitch or 1)
+    sound:play()
+  end
+end
+
+local function parseSpeed(speed)
+  if speed == "fast" then return 0.01
+  elseif speed == "medium" then return 0.04
+  elseif speed == "slow" then return 0.08
+  else
+    assert(tonumber(speed), "setSpeed() - Expected number, got " .. tostring(speed))
+    return speed
+  end
+end
+
 local Fifo = {}
 function Fifo.new () return setmetatable({first=1,last=0},{__index=Fifo}) end
 function Fifo:peek() return self[self.first] end
@@ -64,16 +81,6 @@ function Typer:update(dt)
   return typed
 end
 
-function parseSpeed(speed)
-  if speed == "fast" then return 0.01
-  elseif speed == "medium" then return 0.04
-  elseif speed == "slow" then return 0.08
-  else
-    assert(tonumber(speed), "setSpeed() - Expected number, got " .. tostring(speed))
-    return speed
-  end
-end
-
 local Talkies = {
   _VERSION     = '0.0.1',
   _URL         = 'https://github.com/tanema/talkies',
@@ -95,7 +102,7 @@ local Talkies = {
   pitchValues        = {0.7, 0.8, 1.0, 1.2, 1.3},
 
   indicatorTimer     = 0,
-  indicatorDelay     = 200,
+  indicatorDelay     = 3,
   showIndicator      = false,
   dialogs            = Fifo.new(),
 }
@@ -157,7 +164,7 @@ function Talkies.update(dt)
   local currentMessage = currentDialog.messages:peek()
 
   if currentMessage.paused or currentMessage.complete then
-    Talkies.indicatorTimer = Talkies.indicatorTimer + 1
+    Talkies.indicatorTimer = Talkies.indicatorTimer + (10 * dt)
     if Talkies.indicatorTimer > Talkies.indicatorDelay then
       Talkies.showIndicator = not Talkies.showIndicator
       Talkies.indicatorTimer = 0
@@ -309,13 +316,6 @@ function Talkies.onAction()
       playSound(currentDialog.optionSwitchSound)
     end
     Talkies.advanceMsg()
-  end
-end
-
-function playSound(sound, pitch)
-  if type(sound) == "userdata" then
-    sound:setPitch(pitch or 1)
-    sound:play()
   end
 end
 
