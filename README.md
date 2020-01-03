@@ -136,3 +136,9 @@ local seconddialog = Talkies.say("title", "message")
 firstdialog:isShown() //true
 seconddialog:isShown() //false, will return true when Talkies.onAction() is called
 ```
+
+### Building a script
+
+[Erogodic](https://github.com/oniietzschan/erogodic) is a library for scripting
+branching interactive narrative in Lua, you can check out it's use by running the
+main.lua in that repo.
