@@ -220,7 +220,7 @@ function Talkies.draw()
     return love.graphics.getDimensions()
   end
 
-  local windowWidth, windowHeight = love.graphics.getDimensions()
+  local windowWidth, windowHeight = getDimensions()
 
   -- message box
   local boxW = windowWidth-(2*currentDialog.padding)
