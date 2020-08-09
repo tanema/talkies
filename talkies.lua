@@ -54,13 +54,13 @@ end
 
 function Typer:resume()
   if not self.paused then return end
-  self.msg = self.msg:gsub("-+", " ", 1)
+  self.msg = self.msg:gsub("%-%-", " ", 1)
   self.paused = false
 end
 
 function Typer:finish()
   if self.complete then return end
-  self.visible = self.msg:gsub("-+", " ")
+  self.visible = self.msg:gsub("%-%-", " ")
   self.complete = true
 end
 
