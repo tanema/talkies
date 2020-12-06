@@ -69,17 +69,17 @@ function Typer:update(dt)
   if self.complete then return typed end
   if not self.paused then
     self.timer = self.timer - dt
-    while not self.paused and self.timer <= 0 and self.position < #self.msg + 1 do
+    while not self.paused and not self.complete and self.timer <= 0 do
       typed = string.sub(self.msg, self.position, self.position) ~= " "
       self.position = self.position + 1
       
       self.timer = self.timer + self.max
       self.visible = string.sub(self.msg, 0, utf8.offset(self.msg, self.position) - 1)
+      self.complete = (self.visible == self.msg)
       self.paused = string.sub(self.msg, string.len(self.visible)+1, string.len(self.visible)+2) == "--"
     end
   end
   
-  self.complete = (self.visible == self.msg)
   return typed
 end
 
