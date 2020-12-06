@@ -94,10 +94,18 @@ local Talkies = {
   padding            = 10,
   talkSound          = nil,
   optionSwitchSound  = nil,
-  titleColor         = {1, 1, 1},
-  messageColor       = {1, 1, 1},
-  backgroundColor    = {0, 0, 0, 0.8},
-  textSpeed          = 0.01,
+  
+  titleColor              = {1, 1, 1},
+  titleBackgroundColor    = nil,
+  titleBorderColor        = nil,
+  messageColor            = {1, 1, 1},
+  messageBackgroundColor  = {0, 0, 0, 0.8},
+  messageBorderColor      = nil,
+  
+  rounding           = 0,
+  thickness          = 0,
+  
+  textSpeed          = 1 / 60,
   font               = love.graphics.newFont(),
 
   typedNotTalked     = true,
@@ -116,6 +124,7 @@ function Talkies.say(title, messages, config)
   end
 
   msgFifo = Fifo.new()
+  
   for i=1, #messages do
     msgFifo:push(Typer.new(messages[i], config.textSpeed or Talkies.textSpeed))
   end
@@ -124,7 +133,7 @@ function Talkies.say(title, messages, config)
 
   -- Insert the Talkies.new into its own instance (table)
   local newDialog = {
-    title         = title,
+    title         = title or "",
     messages      = msgFifo,
     image         = config.image,
     options       = config.options,
@@ -133,25 +142,33 @@ function Talkies.say(title, messages, config)
     oncomplete    = config.oncomplete or function(dialog) end,
 
     -- theme
-    indicatorCharacter = config.indicatorCharacter or Talkies.indicatorCharacter,
-    optionCharacter    = config.optionCharacter or Talkies.optionCharacter,
-    padding            = config.padding or Talkies.padding,
-    talkSound          = config.talkSound or Talkies.talkSound,
-    optionSwitchSound  = config.optionSwitchSound or Talkies.optionSwitchSound,
-    titleColor         = config.titleColor or Talkies.titleColor,
-    messageColor       = config.messageColor or Talkies.messageColor,
-    backgroundColor    = config.backgroundColor or Talkies.backgroundColor,
-    font               = font,
-    fontHeight         = font:getHeight(" "),
-    typedNotTalked     = config.typedNotTalked == nil and Talkies.typedNotTalked or config.typedNotTalked,
-    pitchValues        = config.pitchValues or Talkies.pitchValues,
+    indicatorCharacter     = config.indicatorCharacter or Talkies.indicatorCharacter,
+    optionCharacter        = config.optionCharacter or Talkies.optionCharacter,
+    padding                = config.padding or Talkies.padding,
+    rounding               = config.rounding or Talkies.rounding,
+    thickness              = config.thickness or Talkies.thickness,
+    talkSound              = config.talkSound or Talkies.talkSound,
+    optionSwitchSound      = config.optionSwitchSound or Talkies.optionSwitchSound,
+    font                   = font,
+    fontHeight             = font:getHeight(" "),
+    typedNotTalked         = config.typedNotTalked == nil and Talkies.typedNotTalked or config.typedNotTalked,
+    pitchValues            = config.pitchValues or Talkies.pitchValues,
 
     optionIndex   = 1,
 
     showOptions = function(dialog) return dialog.messages:len() == 1 and type(dialog.options) == "table" end,
     isShown     = function(dialog) return Talkies.dialogs:peek() == dialog end
   }
-
+  
+  newDialog.messageBackgroundColor = config.messageBackgroundColor or Talkies.messageBackgroundColor
+  newDialog.titleBackgroundColor = config.titleBackgroundColor or Talkies.titleBackgroundColor or newDialog.messageBackgroundColor
+  
+  newDialog.messageColor = config.messageColor or Talkies.messageColor
+  newDialog.titleColor = config.titleColor or Talkies.titleColor or newDialog.messageColor
+  
+  newDialog.messageBorderColor = config.messageBorderColor or Talkies.messageBorderColor or newDialog.messageBackgroundColor
+  newDialog.titleBorderColor = config.titleBorderColor or Talkies.titleBorderColor or newDialog.messageBorderColor
+  
   Talkies.dialogs:push(newDialog)
   if Talkies.dialogs:len() == 1 then
     Talkies.dialogs:peek():onstart()
@@ -223,6 +240,8 @@ function Talkies.draw()
   end
 
   local windowWidth, windowHeight = getDimensions()
+  
+  love.graphics.setLineWidth(currentDialog.thickness)
 
   -- message box
   local boxW = windowWidth-(2*currentDialog.padding)
@@ -238,28 +257,39 @@ function Talkies.draw()
   end
 
   -- title box
-  local titleBoxW = currentDialog.font:getWidth(currentDialog.title)+(2*currentDialog.padding)
-  local titleBoxH = currentDialog.fontHeight+currentDialog.padding
-  local titleBoxY = boxY-titleBoxH-(currentDialog.padding/2)
-  local titleX, titleY = boxX + currentDialog.padding, titleBoxY + 2
-  local textX, textY = imgX + imgW + currentDialog.padding, boxY + 1
+  local textX, textY = imgX + imgW + currentDialog.padding, boxY + 4
 
   love.graphics.setFont(currentDialog.font)
 
-  -- Message title
-  love.graphics.setColor(currentDialog.backgroundColor)
-  love.graphics.rectangle("fill", boxX, titleBoxY, titleBoxW, titleBoxH)
-  love.graphics.setColor(currentDialog.titleColor)
-  love.graphics.print(currentDialog.title, titleX, titleY)
+  if currentDialog.title ~= "" then
+    local titleBoxW = currentDialog.font:getWidth(currentDialog.title)+(2*currentDialog.padding)
+    local titleBoxH = currentDialog.fontHeight+currentDialog.padding
+    local titleBoxY = boxY-titleBoxH-(currentDialog.padding/2)
+    local titleX, titleY = boxX + currentDialog.padding, titleBoxY + 2
+    
+    -- Message title
+    love.graphics.setColor(currentDialog.titleBackgroundColor)
+    love.graphics.rectangle("fill", boxX, titleBoxY, titleBoxW, titleBoxH, currentDialog.rounding, currentDialog.rounding)
+    if currentDialog.thickness > 0 then
+      love.graphics.setColor(currentDialog.titleBorderColor)
+      love.graphics.rectangle("line", boxX, titleBoxY, titleBoxW, titleBoxH, currentDialog.rounding, currentDialog.rounding)
+    end
+    love.graphics.setColor(currentDialog.titleColor)
+    love.graphics.print(currentDialog.title, titleX, titleY)
+  end
 
   -- Main message box
-  love.graphics.setColor(currentDialog.backgroundColor)
-  love.graphics.rectangle("fill", boxX, boxY, boxW, boxH)
+  love.graphics.setColor(currentDialog.messageBackgroundColor)
+  love.graphics.rectangle("fill", boxX, boxY, boxW, boxH, currentDialog.rounding, currentDialog.rounding)
+  if currentDialog.thickness > 0 then
+    love.graphics.setColor(currentDialog.messageBorderColor)
+    love.graphics.rectangle("line", boxX, boxY, boxW, boxH, currentDialog.rounding, currentDialog.rounding)
+  end
 
   -- Message avatar
   if currentDialog.image ~= nil then
     love.graphics.push()
-      love.graphics.setColor(255, 255, 255)
+      love.graphics.setColor(1, 1, 1)
       love.graphics.draw(currentDialog.image, imgX, imgY, 0, imgScale, imgScale)
     love.graphics.pop()
   end
@@ -270,15 +300,29 @@ function Talkies.draw()
 
   -- Message options (when shown)
   if currentDialog:showOptions() and currentMessage.complete then
-    local optionsY = textY+currentDialog.font:getHeight(currentMessage.visible)-(currentDialog.padding/1.6)
-    local optionLeftPad = currentDialog.font:getWidth(currentDialog.optionCharacter.." ")
+    local optionWidth = 0
+    
+    local optionText = ""
     for k, option in pairs(currentDialog.options) do
-      love.graphics.print(option[1], optionLeftPad+textX+currentDialog.padding, optionsY+((k-1)*currentDialog.fontHeight))
+      local newText = (currentDialog.optionIndex == k and currentDialog.optionCharacter or " ") .. " " .. option[1]
+      optionWidth = math.max(optionWidth, currentDialog.font:getWidth(newText) )
+      optionText = optionText .. newText .. "\n"
     end
-    love.graphics.print(
-      currentDialog.optionCharacter.." ",
-      textX+currentDialog.padding,
-      optionsY+((currentDialog.optionIndex-1)*currentDialog.fontHeight))
+    
+    local optionsH = (currentDialog.font:getHeight() * #currentDialog.options)
+    local optionsX = math.floor((windowWidth / 2) - (optionWidth / 2))
+    local optionsY = math.floor((windowHeight / 3) - (optionsH / 2))
+    
+    love.graphics.setColor(currentDialog.messageBackgroundColor)
+    love.graphics.rectangle("fill", optionsX - currentDialog.padding, optionsY - currentDialog.padding, optionWidth + currentDialog.padding * 2, optionsH + currentDialog.padding * 2, currentDialog.rounding, currentDialog.rounding)
+    
+    if currentDialog.thickness > 0 then
+      love.graphics.setColor(currentDialog.messageBorderColor)
+      love.graphics.rectangle("line", optionsX - currentDialog.padding, optionsY - currentDialog.padding, optionWidth + currentDialog.padding * 2, optionsH + currentDialog.padding * 2, currentDialog.rounding, currentDialog.rounding)
+    end
+    
+    love.graphics.setColor(currentDialog.messageColor)
+    love.graphics.print(optionText, optionsX, optionsY)
   end
 
   -- Next message/continue indicator
