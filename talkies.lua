@@ -89,11 +89,12 @@ local Talkies = {
   _DESCRIPTION = 'A simple messagebox system for LÖVE',
 
   -- Theme
-  indicatorCharacter = ">",
-  optionCharacter    = "-",
-  padding            = 10,
-  talkSound          = nil,
-  optionSwitchSound  = nil,
+  indicatorCharacter      = ">",
+  optionCharacter         = "-",
+  padding                 = 10,
+  talkSound               = nil,
+  optionSwitchSound       = nil,
+  inlineOptions           = true,
   
   titleColor              = {1, 1, 1},
   titleBackgroundColor    = nil,
@@ -102,19 +103,19 @@ local Talkies = {
   messageBackgroundColor  = {0, 0, 0, 0.8},
   messageBorderColor      = nil,
   
-  rounding           = 0,
-  thickness          = 0,
+  rounding                = 0,
+  thickness               = 0,
   
-  textSpeed          = 1 / 60,
-  font               = love.graphics.newFont(),
+  textSpeed               = 1 / 60,
+  font                    = love.graphics.newFont(),
 
-  typedNotTalked     = true,
-  pitchValues        = {0.7, 0.8, 1.0, 1.2, 1.3},
+  typedNotTalked          = true,
+  pitchValues             = {0.7, 0.8, 1.0, 1.2, 1.3},
 
-  indicatorTimer     = 0,
-  indicatorDelay     = 3,
-  showIndicator      = false,
-  dialogs            = Fifo.new(),
+  indicatorTimer          = 0,
+  indicatorDelay          = 3,
+  showIndicator           = false,
+  dialogs                 = Fifo.new(),
 }
 
 function Talkies.say(title, messages, config)
@@ -149,6 +150,7 @@ function Talkies.say(title, messages, config)
     thickness              = config.thickness or Talkies.thickness,
     talkSound              = config.talkSound or Talkies.talkSound,
     optionSwitchSound      = config.optionSwitchSound or Talkies.optionSwitchSound,
+    inlineOptions          = config.inlineOptions or Talkies.inlineOptions,
     font                   = font,
     fontHeight             = font:getHeight(" "),
     typedNotTalked         = config.typedNotTalked == nil and Talkies.typedNotTalked or config.typedNotTalked,
@@ -300,29 +302,41 @@ function Talkies.draw()
 
   -- Message options (when shown)
   if currentDialog:showOptions() and currentMessage.complete then
-    local optionWidth = 0
-    
-    local optionText = ""
-    for k, option in pairs(currentDialog.options) do
-      local newText = (currentDialog.optionIndex == k and currentDialog.optionCharacter or " ") .. " " .. option[1]
-      optionWidth = math.max(optionWidth, currentDialog.font:getWidth(newText) )
-      optionText = optionText .. newText .. "\n"
+    if currentDialog.inlineOptions then
+      local optionsY = textY+currentDialog.font:getHeight(currentMessage.visible)-(currentDialog.padding/1.6)
+      local optionLeftPad = currentDialog.font:getWidth(currentDialog.optionCharacter.." ")
+      for k, option in pairs(currentDialog.options) do
+        love.graphics.print(option[1], optionLeftPad+textX+currentDialog.padding, optionsY+((k-1)*currentDialog.fontHeight))
+      end
+      love.graphics.print(
+        currentDialog.optionCharacter.." ",
+        textX+currentDialog.padding,
+        optionsY+((currentDialog.optionIndex-1)*currentDialog.fontHeight))
+    else
+      local optionWidth = 0
+      
+      local optionText = ""
+      for k, option in pairs(currentDialog.options) do
+        local newText = (currentDialog.optionIndex == k and currentDialog.optionCharacter or " ") .. " " .. option[1]
+        optionWidth = math.max(optionWidth, currentDialog.font:getWidth(newText) )
+        optionText = optionText .. newText .. "\n"
+      end
+      
+      local optionsH = (currentDialog.font:getHeight() * #currentDialog.options)
+      local optionsX = math.floor((windowWidth / 2) - (optionWidth / 2))
+      local optionsY = math.floor((windowHeight / 3) - (optionsH / 2))
+      
+      love.graphics.setColor(currentDialog.messageBackgroundColor)
+      love.graphics.rectangle("fill", optionsX - currentDialog.padding, optionsY - currentDialog.padding, optionWidth + currentDialog.padding * 2, optionsH + currentDialog.padding * 2, currentDialog.rounding, currentDialog.rounding)
+      
+      if currentDialog.thickness > 0 then
+        love.graphics.setColor(currentDialog.messageBorderColor)
+        love.graphics.rectangle("line", optionsX - currentDialog.padding, optionsY - currentDialog.padding, optionWidth + currentDialog.padding * 2, optionsH + currentDialog.padding * 2, currentDialog.rounding, currentDialog.rounding)
+      end
+      
+      love.graphics.setColor(currentDialog.messageColor)
+      love.graphics.print(optionText, optionsX, optionsY)
     end
-    
-    local optionsH = (currentDialog.font:getHeight() * #currentDialog.options)
-    local optionsX = math.floor((windowWidth / 2) - (optionWidth / 2))
-    local optionsY = math.floor((windowHeight / 3) - (optionsH / 2))
-    
-    love.graphics.setColor(currentDialog.messageBackgroundColor)
-    love.graphics.rectangle("fill", optionsX - currentDialog.padding, optionsY - currentDialog.padding, optionWidth + currentDialog.padding * 2, optionsH + currentDialog.padding * 2, currentDialog.rounding, currentDialog.rounding)
-    
-    if currentDialog.thickness > 0 then
-      love.graphics.setColor(currentDialog.messageBorderColor)
-      love.graphics.rectangle("line", optionsX - currentDialog.padding, optionsY - currentDialog.padding, optionWidth + currentDialog.padding * 2, optionsH + currentDialog.padding * 2, currentDialog.rounding, currentDialog.rounding)
-    end
-    
-    love.graphics.setColor(currentDialog.messageColor)
-    love.graphics.print(optionText, optionsX, optionsY)
   end
 
   -- Next message/continue indicator
