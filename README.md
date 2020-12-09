@@ -113,6 +113,7 @@ The following are all of the message theme options:
 * `optionSwitchSound` - Sound to be played when a option is selected
 * `indicatorCharacter` - Character on the bottom right indicating more content (string), default: ">"
 * `optionCharacter` - Character before option to indicate selection (string), default: "-"
+* `inlineOptions` - Sets whether options should be displayed within the message box or if they should be displayed in a separate box, default: `true`
 * `font` - Message box font (e.g. `Talkies.font = love.graphics.newFont("Talkies/main.ttf", 32)`)
 * `padding` - padding on the inside of the box, default is `10`
 * `thickness` - thickness of box borders. Default is `0` (no border).
