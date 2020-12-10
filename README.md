@@ -50,7 +50,7 @@ end
 ### Talkies.say(title, messages, config)
 Create a new dialog of messages and returns that dialog.
 
-- **title** : string
+- **title** : string; if set to `""`, title box will not appear
 - **messages**, a string or a table that contains strings
 - **config**, table that contains message configs, takes;
   * `image`, message icon image e.g. `love.graphics.newImage("img.png")`
@@ -108,20 +108,25 @@ you wanted a single message to go slower you would create it like this.
 `Talkies.say("Old man", "I talk very slow", {textSpeed = "slow"})`
 
 The following are all of the message theme options:
-* `textSpeed`, speed that the text is displayed. `slow`, `medium`, `fast` or number, default to fast.
+* `textSpeed` - speed that the text is displayed. `slow`, `medium`, `fast` or number, default to fast.
 * `talkSound` - Sound to be played when the character speaks, should be a very short clip (e.g. `Talkies.typeSound = love.audio.newSource("typeSound.wav", "static")`)
 * `optionSwitchSound` - Sound to be played when a option is selected
 * `indicatorCharacter` - Character on the bottom right indicating more content (string), default: ">"
 * `optionCharacter` - Character before option to indicate selection (string), default: "-"
+* `inlineOptions` - Sets whether options should be displayed within the message box or if they should be displayed in a separate box, default: `true`
 * `font` - Message box font (e.g. `Talkies.font = love.graphics.newFont("Talkies/main.ttf", 32)`)
 * `padding` - padding on the inside of the box, default is `10`
-* `titleColor`, title text color.
-* `messageColor`, message text color. Default is `{1, 1, 1}`
-* `backgroundColor`, background color of the box. Default is `{0, 0, 0, 0.8}`
-* `typedNotTalked`, when making a sound while talking, if this is set to true the
+* `thickness` - thickness of box borders. Default is `0` (no border).
+* `titleColor` - title text color. Default is `{1, 1, 1}` (when `nil`, uses message text color).
+* `titleBackgroundColor` - background color for title box. Default is `nil` (when `nil`, uses message background color).
+* `titleBorderColor` - border color for title box. Default is `nil` (when `nil`, uses message border color).
+* `messageColor` - message text color. Default is `{1, 1, 1}`
+* `messageBackgroundColor` - background color of the message box. Default is `{0, 0, 0, 0.8}`
+* `messageBorderColor` - border color of the message box. Default is `nil` (when `nil`, uses message background color).
+* `typedNotTalked` - when making a sound while talking, if this is set to true the
   noise will be made for every character. If set to false the noise will be looped,
   and the pitch will be oscillated randomly between the pitchValues setting. default to true
-* `pitchValues`, If `typedNotTalked` is set to false then this table value will be
+* `pitchValues` - If `typedNotTalked` is set to false then this table value will be
   used to choose values of pitch while talking. If you want no pitch change set it to
   {1}, Default is {0.7, 0.8, 1.0, 1.2, 1.3}
 
