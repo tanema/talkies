@@ -298,7 +298,13 @@ function Talkies.draw()
 
   -- Message text
   love.graphics.setColor(currentDialog.messageColor)
-  love.graphics.printf(currentMessage.visible, textX, textY, boxW - imgW - (4 * currentDialog.padding))
+  local textW = boxW - imgW - (4 * currentDialog.padding)
+  local _, modmsg = currentDialog.font:getWrap(currentMessage.msg, textW)
+  local catmsg = table.concat(modmsg, "\n")
+  
+  local display = string.sub(catmsg, 1, #currentMessage.visible + #modmsg - 1)
+  
+  love.graphics.print(display, textX, textY)
 
   -- Message options (when shown)
   if currentDialog:showOptions() and currentMessage.complete then

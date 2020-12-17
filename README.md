@@ -117,6 +117,7 @@ The following are all of the message theme options:
 * `font` - Message box font (e.g. `Talkies.font = love.graphics.newFont("Talkies/main.ttf", 32)`)
 * `padding` - padding on the inside of the box, default is `10`
 * `thickness` - thickness of box borders. Default is `0` (no border).
+* `rounding` - radius in pixels of box corners. Default is `0` (no rounding).
 * `titleColor` - title text color. Default is `{1, 1, 1}` (when `nil`, uses message text color).
 * `titleBackgroundColor` - background color for title box. Default is `nil` (when `nil`, uses message background color).
 * `titleBorderColor` - border color for title box. Default is `nil` (when `nil`, uses message border color).
