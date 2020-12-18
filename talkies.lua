@@ -60,7 +60,8 @@ end
 
 function Typer:finish()
   if self.complete then return end
-  self.visible = self.msg:gsub("%-%-", " ")
+  self.msg = self.msg:gsub("%-%-", " ")
+  self.visible = self.msg
   self.complete = true
 end
 
