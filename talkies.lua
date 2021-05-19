@@ -117,6 +117,8 @@ local Talkies = {
   indicatorDelay          = 3,
   showIndicator           = false,
   dialogs                 = Fifo.new(),
+
+  height                  = nil,
 }
 
 function Talkies.say(title, messages, config)
@@ -248,7 +250,7 @@ function Talkies.draw()
 
   -- message box
   local boxW = windowWidth-(2*currentDialog.padding)
-  local boxH = (windowHeight/3)-(2*currentDialog.padding)
+  local boxH = Talkies.height or (windowHeight/3)-(2*currentDialog.padding)
   local boxX = currentDialog.padding
   local boxY = windowHeight-(boxH+currentDialog.padding)
 
@@ -310,7 +312,7 @@ function Talkies.draw()
   -- Message options (when shown)
   if currentDialog:showOptions() and currentMessage.complete then
     if currentDialog.inlineOptions then
-      local optionsY = textY+currentDialog.font:getHeight(currentMessage.visible)-(currentDialog.padding/1.6)
+      local optionsY = textY+currentDialog.font:getHeight(currentMessage.visible)-- -(currentDialog.padding/1.6)
       local optionLeftPad = currentDialog.font:getWidth(currentDialog.optionCharacter.." ")
       for k, option in pairs(currentDialog.options) do
         love.graphics.print(option[1], optionLeftPad+textX+currentDialog.padding, optionsY+((k-1)*currentDialog.fontHeight))
