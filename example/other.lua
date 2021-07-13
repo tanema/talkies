@@ -17,7 +17,7 @@ function Obey.sayHello()
   Talkies.say( "Tutorial",
     {
       "Talkies is a simple to use messagebox library, it includes;",
-      "Multiple choices,--UTF8 text,--Pauses,--Onstart/OnMessage/Oncomplete functions,--Complete customization,--Variable typing speeds umongst other things."
+      "Multiple choices,-- UTF8 text,-- Pauses,-- Onstart/OnMessage/Oncomplete functions,-- Complete customization,-- Variable typing speeds amongst other things."
     },
     {
       image=avatar,

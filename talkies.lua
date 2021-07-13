@@ -8,6 +8,27 @@
 --
 local utf8 = require("utf8")
 
+--  Substring function which gets a substring of `str` from character indices `start` to `stop`
+--  Automatically calculates correct byte offsets
+--  If `start` is nil, starts from index `1`
+--  If `stop` is nil, stops at end of string
+--
+--    Modified from code by lhf
+--    https://stackoverflow.com/a/43139063
+function utf8.sub(str, start, stop)
+  local strLength = utf8.len(str)
+  local start = math.min(start or 1, strLength)
+  start = utf8.offset(str, start)
+  local stop = stop or strLength
+  stop = math.min(stop, strLength)
+  if stop == -1 then
+    stop = strLength
+  else
+    stop = utf8.offset(str, stop + 1) - 1
+  end
+  return string.sub(str, start, stop)
+end
+
 local function playSound(sound, pitch)
   if type(sound) == "userdata" then
     sound:setPitch(pitch or 1)
@@ -46,38 +67,44 @@ end
 local Typer = {}
 function Typer.new(msg, speed)
   local timeToType = parseSpeed(speed)
+  
+  local strip = string.gsub(msg, "\n","")
+  
   return setmetatable({
     msg = msg, complete = false, paused = false,
-    timer = timeToType, max = timeToType, position = 0, visible = "",
+    timer = timeToType, max = timeToType, position = 1, strip = strip,
   },{__index=Typer})
 end
 
 function Typer:resume()
   if not self.paused then return end
   self.msg = self.msg:gsub("%-%-", " ", 1)
+  self.strip = self.strip:gsub("%-%-", " ", 1)
   self.paused = false
 end
 
 function Typer:finish()
   if self.complete then return end
   self.msg = self.msg:gsub("%-%-", " ")
-  self.visible = self.msg
+  self.position = utf8.len(self.msg)
   self.complete = true
 end
 
 function Typer:update(dt)
   local typed = false
+  
   if self.complete then return typed end
   if not self.paused then
     self.timer = self.timer - dt
     while not self.paused and not self.complete and self.timer <= 0 do
-      typed = string.sub(self.msg, self.position, self.position) ~= " "
+      typed = utf8.sub(self.strip, self.position, self.position) ~= " "
       self.position = self.position + 1
       
       self.timer = self.timer + self.max
-      self.visible = string.sub(self.msg, 0, utf8.offset(self.msg, self.position) - 1)
-      self.complete = (self.visible == self.msg)
-      self.paused = string.sub(self.msg, string.len(self.visible)+1, string.len(self.visible)+2) == "--"
+      
+      self.complete = self.position >= utf8.len(self.strip)
+      
+      self.paused = utf8.sub(self.strip, self.position + 1, self.position + 2) == "--"
     end
   end
   
@@ -302,17 +329,30 @@ function Talkies.draw()
   -- Message text
   love.graphics.setColor(currentDialog.messageColor)
   local textW = boxW - imgW - (4 * currentDialog.padding)
+  local textH = currentDialog.font:getHeight()
+  
   local _, modmsg = currentDialog.font:getWrap(currentMessage.msg, textW)
-  local catmsg = table.concat(modmsg, "\n")
   
-  local display = string.sub(catmsg, 1, #currentMessage.visible + #modmsg - 1)
+  local tempPosition = 1
+  local lineNum = 1
   
-  love.graphics.print(display, textX, textY)
+  while tempPosition < currentMessage.position and utf8.len(currentMessage.strip) > 0 do
+    local displayLine = modmsg[lineNum]
+    
+    local positionAdd = math.min(currentMessage.position - tempPosition + 1, utf8.len(displayLine))
+    tempPosition = tempPosition + positionAdd
+    
+    local display = utf8.sub(displayLine, 1, positionAdd)
+    
+    love.graphics.print(display, textX, textY + textH * (lineNum - 1))
+    
+    lineNum = lineNum + 1
+  end
 
   -- Message options (when shown)
   if currentDialog:showOptions() and currentMessage.complete then
     if currentDialog.inlineOptions then
-      local optionsY = textY+currentDialog.font:getHeight(currentMessage.visible)-- -(currentDialog.padding/1.6)
+      local optionsY = textY + currentDialog.font:getHeight() * #modmsg
       local optionLeftPad = currentDialog.font:getWidth(currentDialog.optionCharacter.." ")
       for k, option in pairs(currentDialog.options) do
         love.graphics.print(option[1], optionLeftPad+textX+currentDialog.padding, optionsY+((k-1)*currentDialog.fontHeight))
