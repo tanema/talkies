@@ -78,15 +78,16 @@ end
 
 function Typer:resume()
   if not self.paused then return end
-  self.msg = self.msg:gsub("%-%-", " ", 1)
-  self.strip = self.strip:gsub("%-%-", " ", 1)
+  self.msg = self.msg:gsub("%-%-", "", 1)
+  self.strip = self.strip:gsub("%-%-", "", 1)
   self.paused = false
 end
 
 function Typer:finish()
   if self.complete then return end
-  self.msg = self.msg:gsub("%-%-", " ")
-  self.position = utf8.len(self.msg)
+  self.msg = self.msg:gsub("%-%-", "")
+  self.strip = self.strip:gsub("%-%-", "")
+  self.position = utf8.len(self.strip)
   self.complete = true
 end
 
