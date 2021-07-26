@@ -55,7 +55,7 @@ end
 
 function love.keypressed(key)
   if key == "c" then Talkies.clearMessages()
-  elseif key == "m" then Talkies.say("Title", "Message one", "two", "and three...", {onstart=function() rand() end})
+  elseif key == "m" then Talkies.say("Title", {"Message one", "two", "and three..."}, {onstart=function() rand() end})
   elseif key == "escape" then love.event.quit()
   elseif key == "space" then Talkies.onAction()
   elseif key == "up" then Talkies.prevOption()

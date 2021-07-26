@@ -71,7 +71,8 @@ below
 
 #### Pauses
 A double dash `--` causes them message to stop typing, and will only continue when
-`Talkies.selectButton` is pressed, each `--` will be replaced with a space.
+`Talkies.selectButton` is pressed. (Be sure to follow each `--` with a space if you
+want text to wrap correctly!)
 
 ### Talkies.update(dt)
 Update will update the UI with the dt and animate the typing
